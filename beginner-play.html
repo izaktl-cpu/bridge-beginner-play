@@ -1,0 +1,867 @@
+<!doctype html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>משחק היד למתחילים</title>
+<style>
+:root { --bg:#f3f1ea; --felt:#1f6b45; --ink:#1c1c1c; --muted:#666; --card:#fff; --red:#c0272d; --accent:#2b5fab; --line:#d8d3c4; }
+* { box-sizing:border-box; }
+body { margin:0; font-family:"Segoe UI",Arial,sans-serif; background:var(--bg); color:var(--ink); }
+header { display:flex; gap:12px; align-items:center; flex-wrap:wrap; padding:10px 16px; background:#fff; border-bottom:1px solid var(--line); }
+header h1 { font-size:18px; margin:0; }
+select, button { font:inherit; padding:6px 12px; border-radius:6px; border:1px solid var(--line); background:#fff; cursor:pointer; }
+button.primary { background:var(--accent); color:#fff; border-color:var(--accent); }
+.bid, .num, .c { unicode-bidi:isolate; }
+.review { background:#fff3cd; color:#7a5b00; padding:6px 16px; border-bottom:1px solid #ecd98b; }
+main { display:grid; grid-template-columns:minmax(0,1fr) 300px; gap:16px; padding:16px; max-width:1150px; margin:auto; }
+@media (max-width:860px) { main { grid-template-columns:1fr; } }
+/* ---- the table: the same as every other exercise page (copied from finesse.html) ---- */
+.table { --gold:#c9a227; --tfelt:#16a34a; --panel-bg:#eee3fb; --panel-border:#c9aee8; --taccent:#2a5fa5; --text:#1a2a4a;
+  --card-bg:#e0cdf5; --card-border:#c9aee8; --card-face:#fff; --card-face-border:#a0b8d8; --ink-black:#1a2a4a; --ink-red:#b91c1c;
+  width:min(94vw, 88vh, 760px); aspect-ratio:1 / 1; margin:0 auto; direction:ltr; display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(0,1.7fr) minmax(0,1fr); grid-template-rows:1fr 1fr 1fr;
+  grid-template-areas:"tl north tr" "west center east" "bl south br"; gap:8px; align-items:center; justify-items:center;
+  background:var(--tfelt); border:4px solid var(--gold); border-radius:20px; padding:10px; box-sizing:border-box;
+  box-shadow:0 10px 34px rgba(0,0,0,0.45); }
+.seat-panel { background:var(--panel-bg); color:var(--text); border:1px solid var(--panel-border); border-radius:8px; padding:5px 8px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.35); min-width:116px; }
+.seat-panel.turn { outline:3px solid #ffd54a; }
+.seat-north { grid-area:north; box-sizing:border-box; justify-self:stretch; width:200%; margin-inline-start:-50%; position:relative; transform:translateY(calc(-50% + 0.5cm)); }
+.seat-south { grid-area:south; box-sizing:border-box; justify-self:stretch; width:200%; margin-inline-start:-50%; position:relative; transform:translateY(calc(50% - 0.5cm)); }
+.seat-west { grid-area:west; box-sizing:border-box; justify-self:stretch; width:200%; margin-inline-start:-50%; position:relative; transform:rotate(90deg); }
+.seat-east { grid-area:east; box-sizing:border-box; justify-self:stretch; width:200%; margin-inline-start:-50%; position:relative; transform:rotate(90deg); }
+.seat-title { font-weight:bold; text-align:center; margin-bottom:3px; font-size:14px; color:var(--taccent); }
+.hand-line { display:flex; flex-wrap:nowrap; align-items:center; gap:3px; width:100%; direction:ltr; }
+.rank-btn { display:flex; flex-direction:column; align-items:center; justify-content:space-between; flex:1 1 0; min-width:0; height:53px;
+  border-radius:6px; background:var(--card-face); color:var(--ink-black); font-weight:bold; border:1px solid var(--card-face-border);
+  cursor:pointer; padding:2px 2px; box-shadow:0 1px 2px rgba(0,0,0,0.2); font-family:inherit; }
+.rank-btn .card-rank { font-size:20px; line-height:1; }
+.rank-btn .card-suit { font-size:21px; line-height:1; }
+.rank-btn.red { color:var(--ink-red); }
+.rank-btn[disabled] { opacity:0.35; cursor:not-allowed; }
+.rank-btn.revealed { opacity:1; cursor:default; border-style:dashed; }
+.rank-btn.revealed[disabled] { opacity:0.92; }
+.rank-back { min-width:53px; height:53px; border-radius:6px; background:repeating-linear-gradient(45deg,#e0cdf5,#e0cdf5 3px,#cfb0ea 3px,#cfb0ea 6px); border:1px solid var(--card-border); }
+.hand-line .rank-back { flex:1 1 0; min-width:0; }
+.hand-count { display:none; }
+.compass { position:relative; z-index:1; grid-area:center; width:234px; height:234px; border:3px solid var(--taccent); background:var(--card-bg);
+  border-radius:14px; display:grid; grid-template-columns:1fr 1fr 1fr; grid-template-rows:1fr 1fr 1fr;
+  grid-template-areas:".  tn ." "tw tc te" ".  ts ."; align-items:center; justify-items:center; }
+.trick-tn { grid-area:tn; } .trick-te { grid-area:te; } .trick-ts { grid-area:ts; } .trick-tw { grid-area:tw; }
+.compass-letter { font-size:39px; font-weight:bold; opacity:0.6; color:var(--text); }
+.card-btn { display:inline-flex; align-items:center; justify-content:center; min-width:42px; height:57px; border-radius:6px; background:var(--card-face);
+  color:var(--ink-black); font-size:22px; font-weight:bold; border:2px solid var(--taccent); padding:0 4px; box-shadow:0 2px 4px rgba(0,0,0,0.25); }
+.card-btn.red { color:var(--ink-red); }
+@media (max-width:700px) {
+  .table { grid-template-columns:minmax(0,1fr) auto minmax(0,1fr); aspect-ratio:auto; }
+  .table .compass { width:172px; height:172px; }
+  .table .seat-west, .table .seat-east { width:auto; margin-inline-start:0; transform:none; min-width:0; padding:4px 2px; }
+  .table .seat-west .rank-back, .table .seat-east .rank-back { display:none; }
+  .table:not(.table--revealed) .seat-west .hand-line, .table:not(.table--revealed) .seat-east .hand-line { display:block; }
+  .table .seat-west .hand-count, .table .seat-east .hand-count { display:block; text-align:center; font-size:13px; font-weight:bold; color:var(--taccent); }
+  .table .seat-west .seat-title, .table .seat-east .seat-title { font-size:12px; margin-bottom:1px; }
+  .table .seat-north, .table .seat-south { width:100%; margin-inline-start:0; grid-column:1 / -1; transform:none; }
+  .table .seat-north .hand-line, .table .seat-south .hand-line { flex-wrap:wrap; justify-content:center; }
+  .table .seat-north .rank-btn, .table .seat-south .rank-btn { min-width:34px; flex:0 0 auto; }
+  .table.table--revealed { padding:8px; min-height:calc(94vw + 1cm); grid-template-rows:1fr 1.7fr 1fr; }
+  .table.table--revealed .seat-west { width:auto; margin-inline-start:-34.5px; min-width:0; justify-self:start; transform:rotate(90deg); }
+  .table.table--revealed .seat-east { width:auto; margin-inline-end:-34.5px; min-width:0; justify-self:end; transform:rotate(-90deg); }
+  .table.table--revealed .compass { display:none; }
+  .table.table--revealed .rank-btn { height:42px; }
+  .table.table--revealed .rank-btn .card-rank, .table.table--revealed .rank-btn .card-suit { font-size:16px; }
+  .table.table--revealed .seat-west .hand-line, .table.table--revealed .seat-east .hand-line { flex-wrap:wrap; width:165px; }
+  .table.table--revealed .seat-west .rank-btn, .table.table--revealed .seat-east .rank-btn { min-width:0; flex:0 0 auto; width:20px; height:36px; }
+}
+.card { display:inline-flex; align-items:center; justify-content:center; min-width:30px; height:30px; padding:0 4px;
+  background:var(--card); color:var(--ink); border-radius:5px; font-weight:600; font-size:16px; border:1px solid #bbb; user-select:none; }
+.card.red { color:var(--red); }
+.card.can { cursor:pointer; box-shadow:0 0 0 2px #ffd54a; }
+.card.can:hover { transform:translateY(-3px); }
+.card.dim { opacity:.35; }
+aside { display:flex; flex-direction:column; gap:12px; }
+.box { background:#fff; border:1px solid var(--line); border-radius:10px; padding:12px; }
+.box h2 { font-size:15px; margin:0 0 8px; }
+.auction { direction:ltr; display:grid; grid-template-columns:repeat(4,1fr); gap:2px 6px; text-align:center; font-size:15px; }
+.auction .h { font-weight:600; color:var(--muted); direction:rtl; }
+.score { font-size:15px; line-height:1.8; }
+#msg { min-height:24px; font-size:14px; color:var(--muted); }
+.modal { position:fixed; inset:0; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:16px; }
+.modal .box { max-width:460px; font-size:16px; line-height:1.7; }
+.hidden { display:none !important; }
+.expl { white-space:pre-wrap; line-height:1.7; font-size:15px; }
+table.play { width:100%; border-collapse:collapse; font-size:14px; margin-top:6px; }
+table.play th, table.play td { border:1px solid var(--line); padding:3px 4px; text-align:center; }
+table.play tr.ns { background:#e7f3ea; } table.play tr.ew { background:#fbe9e9; }
+table.play .card { min-width:26px; height:24px; font-size:14px; }
+.endArea { grid-column:1; display:flex; flex-direction:column; gap:16px; }
+.endArea .box { padding:18px; }
+.endArea h2 { font-size:19px; }
+.endArea .score, .endArea .expl { font-size:18px; line-height:1.8; }
+table.play { font-size:17px !important; }
+table.play .card { min-width:34px !important; height:30px !important; font-size:17px !important; }
+.hands-line { direction:ltr; font-family:Consolas,monospace; font-size:12px; word-break:break-all; color:var(--muted); }
+.levels { display:flex; gap:8px; flex-wrap:wrap; padding:8px 16px; background:#fff; border-bottom:1px solid var(--line); }
+.lvl { display:flex; flex-direction:column; align-items:center; gap:2px; padding:6px 12px; border:1px solid var(--line); border-radius:8px; background:#f7f7f7; font-size:15px; cursor:pointer; }
+.lvl small { font-size:12px; color:var(--muted); }
+.lvl.cur { border-color:#2b6cb0; background:#e8f1fb; font-weight:700; }
+.lvl.done { background:#e6f4ea; }
+.lvl.locked { opacity:.5; cursor:not-allowed; }
+</style>
+</head>
+<body>
+<header>
+  <a href="topics.html">כל הנושאים</a>
+  <h1>משחק היד למתחילים</h1>
+  <select id="pick"></select>
+  <button id="restart">שחק מחדש</button>
+  <button id="lessonBtn">שיעור <bdi>NT</bdi></button>
+  <button id="showDef">הצג ידי הגנה</button>
+  <button id="undo">אחורה</button>
+  <button class="primary" id="nextTop">לוח הבא</button>
+</header>
+<nav id="levels" class="levels" style="display:none"></nav>
+<main>
+  <div class="table" id="tableEl">
+    <div class="seat-north seat-panel" id="seatN"><div class="seat-title" dir="rtl" id="titleN"></div><div class="hand-line" id="handN"></div></div>
+    <div class="seat-west seat-panel" id="seatW"><div class="seat-title" dir="rtl" id="titleW"></div><div class="hand-line" id="handW"></div></div>
+    <div class="compass" id="trickArea"></div>
+    <div class="seat-east seat-panel" id="seatE"><div class="seat-title" dir="rtl" id="titleE"></div><div class="hand-line" id="handE"></div></div>
+    <div class="seat-south seat-panel" id="seatS"><div class="seat-title" dir="rtl" id="titleS"></div><div class="hand-line" id="handS"></div></div>
+  </div>
+  <aside>
+    <div class="box">
+      <h2 id="title"></h2>
+      <div class="score" id="info"></div>
+      <div id="msg"></div>
+    </div>
+    <div class="box"><h2>הכרזה</h2><div class="auction" id="auction"></div></div>
+    <div class="box"><h2>כדאי לזכור</h2><div class="expl" id="tips"></div></div>
+  </aside>
+  <div class="endArea">
+    <div class="box hidden" id="endBox">
+      <h2>סוף הלוח</h2>
+      <div class="score" id="result"></div>
+      <div class="expl" id="crit"></div>
+      <p><button class="primary" id="next">לוח הבא</button> <button id="again">שחק שוב את הלוח</button></p>
+    </div>
+    <div class="box hidden" id="tricksBox"><h2>המשחק שלך</h2><div id="tricks"></div></div>
+  </div>
+</main>
+
+
+<script>var Module = {};</script>
+<script src="engine/dds/libdds.js"></script>
+<script>window.BOARDS = [{"id":"לוח 1","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"4D","hands":{"N":"KJ.976.J982.AQ84","E":"86532.KJ54..T732","S":"AT7.AT3.AQT5.K95","W":"Q94.Q82.K7643.J6"},"approved":true},{"id":"לוח 2","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","2NT","P","3NT","P","P","P"],"lead":"8C","hands":{"N":"874.T63.A85.AJT6","E":"K65.K9872.QT76.7","S":"QT9.AQ54.KJ4.KQ5","W":"AJ32.J.932.98432"},"approved":true},{"id":"לוח 3","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"3D","hands":{"N":"QJ.KQ4.QT98.K953","E":"AK865.85.54.J742","S":"T42.AT76.AJ.AQT6","W":"973.J932.K7632.8"},"approved":true},{"id":"לוח 4","group":"NT","contract":"2NT","declarer":"S","dealer":"S","auction":["1NT","P","2NT","P","P","P"],"lead":"7S","hands":{"N":"643.KJ2.JT64.A84","E":"J9.AT7543.93.KJ5","S":"AK2.Q986.A87.QT2","W":"QT875..KQ52.9763"},"approved":true},{"id":"לוח 5","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","2NT","P","3NT","P","P","P"],"lead":"5D","hands":{"N":"KT8.K64.82.K8764","E":"Q742.T98.Q4.JT93","S":"AJ9.J52.AJ97.AQ2","W":"653.AQ73.KT653.5"},"approved":true},{"id":"לוח 6","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"3H","hands":{"N":"QT.97.KJT87.AQ72","E":"987632.T65.9.KT8","S":"AKJ.K842.A65.543","W":"54.AQJ3.Q432.J96"},"approved":true},{"id":"לוח 7","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"8S","hands":{"N":"QJ2.J83.KQT8.K42","E":"A95.52.7432.A983","S":"K7.A976.AJ96.QJ5","W":"T8643.KQT4.5.T76"},"approved":true},{"id":"לוח 8","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"8H","hands":{"N":"Q75.K63.Q97.KJT5","E":"AK6.A2.T854.7643","S":"J432.Q4.AK32.AQ9","W":"T98.JT9875.J6.82"},"approved":true},{"id":"לוח 9","group":"NT","contract":"1NT","declarer":"S","dealer":"S","auction":["1NT","P","P","P"],"lead":"2S","hands":{"N":"J75.97.Q765.A864","E":"AT83.KT3.43.KJ53","S":"Q9.AQ54.AK98.QT9","W":"K642.J862.JT2.72"},"approved":true},{"id":"לוח 10","group":"NT","contract":"2NT","declarer":"S","dealer":"S","auction":["1NT","P","2NT","P","P","P"],"lead":"4S","hands":{"N":"T9.A2.9853.KQ873","E":"A65.J984.A6.JT64","S":"KQ3.K653.QJ72.A2","W":"J8742.QT7.KT4.95"},"approved":true},{"id":"לוח 11","group":"NT","contract":"2NT","declarer":"S","dealer":"S","auction":["1NT","P","2NT","P","P","P"],"lead":"3H","hands":{"N":"T82.J62.J92.AQ87","E":"J975.8754.K73.T4","S":"A64.AK.Q864.K532","W":"KQ3.QT93.AT5.J96"},"approved":true},{"id":"לוח 12","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"3S","hands":{"N":"K5.Q92.JT7.A6432","E":"JT92.A875.8642.5","S":"A64.KJ4.A95.KJT7","W":"Q873.T63.KQ3.Q98"},"approved":true},{"id":"לוח 13","group":"NT","contract":"2NT","declarer":"S","dealer":"S","auction":["1NT","P","2NT","P","P","P"],"lead":"2S","hands":{"N":"Q93.T74.QJ75.A73","E":"T8.J96.KT32.J942","S":"KJ65.AK5.864.KQ8","W":"A742.Q832.A9.T65"},"approved":true},{"id":"לוח 14","group":"NT","contract":"1NT","declarer":"S","dealer":"S","auction":["1NT","P","P","P"],"lead":"7H","hands":{"N":"K65.T42.QJT9.T94","E":"Q84.J53.A72.8762","S":"AJ72.K96.83.AQJ3","W":"T93.AQ87.K654.K5"},"approved":true},{"id":"לוח 15","group":"NT","contract":"1NT","declarer":"S","dealer":"S","auction":["1NT","P","P","P"],"lead":"5S","hands":{"N":"873.972.AQ93.765","E":"92.AJ4.KT8.KJT43","S":"AQT4.KT3.J62.AQ8","W":"KJ65.Q865.754.92"},"approved":true},{"id":"לוח 16","group":"NT","contract":"2NT","declarer":"S","dealer":"S","auction":["1NT","P","2NT","P","P","P"],"lead":"3D","hands":{"N":"T8.A53.AT74.J932","E":"AQ752.QJT4.Q62.5","S":"K963.K86.J5.AKQ7","W":"J4.972.K983.T864"},"approved":true},{"id":"לוח 17","group":"NT","contract":"1NT","declarer":"S","dealer":"S","auction":["1NT","P","P","P"],"lead":"4D","hands":{"N":"T72.T42.873.A752","E":"KQ843.AK765..J84","S":"AJ5.93.AQ965.KQ9","W":"96.QJ8.KJT42.T63"},"approved":true},{"id":"לוח 18","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"7S","hands":{"N":"KQT.Q86.QJ95.863","E":"J.KJT3.873.KJT74","S":"A82.A2.K642.AQ92","W":"976543.9754.AT.5"},"approved":true},{"id":"לוח 19","group":"NT","contract":"1NT","declarer":"S","dealer":"S","auction":["1NT","P","P","P"],"lead":"4C","hands":{"N":"T5.K76.Q7642.T53","E":"Q763.T43.A9.A762","S":"AJ92.AQJ8.K53.Q9","W":"K84.952.JT8.KJ84"},"approved":true},{"id":"לוח 20","group":"NT","contract":"2NT","declarer":"S","dealer":"S","auction":["1NT","P","2NT","P","P","P"],"lead":"2H","hands":{"N":"KT5.A9.T82.QT763","E":"QJ76.KJT65.Q3.KJ","S":"A843.73.AK94.A85","W":"92.Q842.J765.942"},"approved":true},{"id":"לוח 21","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"2S","hands":{"N":"Q94.Q64.QJ82.QJT","E":"T753.532.AK7.532","S":"K6.AK9.963.AK876","W":"AJ82.JT87.T54.94"},"approved":true},{"id":"לוח 22","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"8S","hands":{"N":"53.KQ.Q742.KQT73","E":"A4.J983.AT95.954","S":"KQJT.AT4.KJ6.J62","W":"98762.7652.83.A8"},"approved":true},{"id":"לוח 23","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"7S","hands":{"N":"A42.852.AT4.Q632","E":"J3.AQT4.J872.J84","S":"KT6.KJ96.KQ65.A9","W":"Q9875.73.93.KT75"},"approved":true},{"id":"לוח 24","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"4S","hands":{"N":"Q7.K92.KJT7.Q542","E":"962.654.A9643.J7","S":"JT8.AQ87.Q2.AK83","W":"AK543.JT3.85.T96"},"approved":true},{"id":"לוח 25","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"5C","hands":{"N":"AK2.JT7.J63.J643","E":"763.Q865.T7542.8","S":"QT98.K3.AK8.A972","W":"J54.A942.Q9.KQT5"},"approved":true},{"id":"לוח 26","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"3C","hands":{"N":"732.973.A986.AK4","E":"985.T62.QJ42.765","S":"AT4.KQJ5.KT73.Q9","W":"KQJ6.A84.5.JT832"},"approved":true},{"id":"לוח 27","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"8S","hands":{"N":"Q9.KT6.Q54.K8764","E":"J2.AJ7.872.QJ932","S":"AK63.Q85.AT3.AT5","W":"T8754.9432.KJ96."},"approved":true},{"id":"לוח 28","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","2NT","P","3NT","P","P","P"],"lead":"7S","hands":{"N":"A82.Q82.KT54.T87","E":"J.J9743.A96.K952","S":"KQT.AK6.Q873.QJ4","W":"976543.T5.J2.A63"},"approved":true},{"id":"לוח 29","group":"NT","contract":"1NT","declarer":"S","dealer":"S","auction":["1NT","P","P","P"],"lead":"6H","hands":{"N":"QJ7.875.A863.T65","E":"842.T32.KT54.AK3","S":"AK965.A9.J72.QJ9","W":"T3.KQJ64.Q9.8742"},"approved":true},{"id":"לוח 30","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"7H","hands":{"N":"AK.T6.QT732.KT98","E":"Q54.J9432.865.J5","S":"J8632.K5.AK4.A63","W":"T97.AQ87.J9.Q742"},"approved":true},{"id":"לוח 31","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"4H","hands":{"N":"953.K5.AKJ83.753","E":"QT76.T2.952.J842","S":"AJ8.AQ76.Q764.Q6","W":"K42.J9843.T.AKT9"},"approved":true},{"id":"לוח 32","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"2C","hands":{"N":"KQ2.J65.QJ5.A765","E":"AJ74.432.KT2.J83","S":"986.AKQT8.A76.KT","W":"T53.97.9843.Q942"},"approved":true},{"id":"לוח 33","group":"NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1NT","P","3NT","P","P","P"],"lead":"5S","hands":{"N":"K73.K3.AT976.853","E":"642.T86.K85.J764","S":"AT8.Q9542.42.AKQ","W":"QJ95.AJ7.QJ3.T92"},"approved":true},{"id":"לוח 34","group":"NT","contract":"2NT","declarer":"S","dealer":"S","auction":["1NT","P","2NT","P","P","P"],"lead":"9H","hands":{"N":"743.A7.AJ63.T753","E":"86.8642.KQT2.Q62","S":"AKQJ2.Q5.854.A94","W":"T95.KJT93.97.KJ8"},"approved":true},{"id":"לוח 35","group":"TR","contract":"4H","declarer":"S","dealer":"S","auction":["1H","P","4H","P","P","P"],"lead":"TD","hands":{"N":"AK9.K75.K52.T975","E":"T86543.T.876.KJ6","S":"Q72.AQJ963.3.A84","W":"J.842.AQJT94.Q32"},"approved":true,"kind":"D"},{"id":"לוח 36","group":"TR","contract":"2H","declarer":"S","dealer":"S","auction":["1H","P","2H","P","P","P"],"lead":"3S","hands":{"N":"98.KJ9.QT7643.J6","E":"KT5.A863.KJ.Q843","S":"J64.QT752.A.AK97","W":"AQ732.4.9852.T52"},"approved":true,"kind":"D"},{"id":"לוח 37","group":"TR","contract":"2S","declarer":"S","dealer":"S","auction":["1S","P","2S","P","P","P"],"lead":"5C","hands":{"N":"T762.Q84.A65.963","E":"Q8.A753.JT2.AJ82","S":"KJ943.KJ.Q9843.Q","W":"A5.T962.K7.KT754"},"approved":true,"kind":"D"},{"id":"לוח 38","group":"TR","contract":"4H","declarer":"S","dealer":"S","auction":["1H","P","4H","P","P","P"],"lead":"3C","hands":{"N":"J2.KQJ.AT854.K84","E":"KT983.42.J6.T962","S":"Q76.AT863.KQ2.Q5","W":"A54.975.973.AJ73"},"approved":true,"kind":"D"},{"id":"לוח 39","group":"TR","contract":"3H","declarer":"S","dealer":"S","auction":["1H","P","3H","P","P","P"],"lead":"4D","hands":{"N":"A43.852.AKT8.J74","E":"K96.Q3.9632.KT93","S":"QJ5.AKJ74.J.Q862","W":"T872.T96.Q754.A5"},"approved":true,"kind":"D"},{"id":"לוח 40","group":"TR","contract":"2S","declarer":"S","dealer":"S","auction":["1S","P","2S","P","P","P"],"lead":"8D","hands":{"N":"642.Q85.A764.QJT","E":"T5.AT96.T932.743","S":"AKQJ87.J72.5.K96","W":"93.K43.KQJ8.A852"},"approved":true,"kind":"D"},{"id":"לוח 41","group":"TR","contract":"2H","declarer":"S","dealer":"S","auction":["1H","P","2H","P","P","P"],"lead":"3D","hands":{"N":"A2.943.98.KJT973","E":"JT863.K52.AKJT.A","S":"KQ4.AQJ87.642.Q4","W":"975.T6.Q753.8652"},"approved":true,"kind":"D"},{"id":"לוח 42","group":"TR","contract":"3H","declarer":"S","dealer":"S","auction":["1H","P","3H","P","P","P"],"lead":"5S","hands":{"N":"Q3.AJ84.84.KJT83","E":"764.K73.KJ9653.5","S":"AJ8.QT9652.A.Q64","W":"KT952..QT72.A972"},"approved":true,"kind":"D"},{"id":"לוח 43","group":"TR","contract":"4H","declarer":"S","dealer":"S","auction":["1H","P","3H","P","4H","P","P","P"],"lead":"5D","hands":{"N":"872.QJ95.AK8.T93","E":"QT64.7.964.87642","S":"AKJ.AT642.Q2.AJ5","W":"953.K83.JT753.KQ"},"approved":true,"kind":"D"},{"id":"לוח 44","group":"TR","contract":"2S","declarer":"S","dealer":"S","auction":["1S","P","2S","P","P","P"],"lead":"2H","hands":{"N":"AT975.A73.763.J3","E":"2.J654.985.AKT75","S":"K8643.K8.AQT2.98","W":"QJ.QT92.KJ4.Q642"},"approved":true,"kind":"D"},{"id":"לוח 45","group":"TR","contract":"2S","declarer":"S","dealer":"S","auction":["1S","P","2S","P","P","P"],"lead":"4D","hands":{"N":"KQJ984.94.T82.92","E":"3.J8732.J7.AKT53","S":"AT752.AQ5.KQ6.J8","W":"6.KT6.A9543.Q764"},"approved":true,"kind":"D"},{"id":"לוח 46","group":"TR","contract":"2H","declarer":"S","dealer":"S","auction":["1H","P","2H","P","P","P"],"lead":"2C","hands":{"N":"QJ8.Q94.T95.JT76","E":"KT742.T6.Q74.Q94","S":"95.AKJ32.AKJ8.53","W":"A63.875.632.AK82"},"approved":true,"kind":"D"},{"id":"לוח 47","group":"TR","contract":"3S","declarer":"S","dealer":"S","auction":["1S","P","3S","P","P","P"],"lead":"5H","hands":{"N":"742.JT6.AJ7.A865","E":"T8.K8432.T862.J7","S":"AK953.7.KQ94.QT4","W":"QJ6.AQ95.53.K932"},"approved":true,"kind":"D"},{"id":"לוח 48","group":"TR","contract":"3H","declarer":"S","dealer":"S","auction":["1H","P","3H","P","P","P"],"lead":"5C","hands":{"N":"JT5.K542.AQJ9.74","E":"Q4.9763.KT4.Q986","S":"K73.AQJT8.7653.A","W":"A9862..82.KJT532"},"approved":true,"kind":"D"},{"id":"לוח 49","group":"TR","contract":"2H","declarer":"S","dealer":"S","auction":["1H","P","2H","P","P","P"],"lead":"9C","hands":{"N":"J6.982.AJ976.543","E":"K9872.J3.QT82.A7","S":"A3.AKQT65.K.Q862","W":"QT54.74.543.KJT9"},"approved":true,"kind":"D"},{"id":"לוח 50","group":"TR","contract":"4S","declarer":"S","dealer":"S","auction":["1S","P","3S","P","4S","P","P","P"],"lead":"7D","hands":{"N":"A87.K54.A986.873","E":"53.QJ876.J2.KT42","S":"KQJ64.A3.KQ.QJ95","W":"T92.T92.T7543.A6"},"approved":true,"kind":"D"},{"id":"לוח 51","group":"TR","contract":"4H","declarer":"S","dealer":"S","auction":["1H","P","4H","P","P","P"],"lead":"9C","hands":{"N":"AT9.T9432.AQ94.K","E":"QJ74.Q5.K32.A763","S":"K532.AKJ87.J6.QJ","W":"86.6.T875.T98542"},"approved":true,"kind":"D"},{"id":"לוח 52","group":"TR","contract":"3S","declarer":"S","dealer":"S","auction":["1S","P","3S","P","P","P"],"lead":"8C","hands":{"N":"Q6543.QT6.AJ.K54","E":"2.J742.KQ9852.T2","S":"AKJT7.K93.T64.J7","W":"98.A85.73.AQ9863"},"approved":true,"kind":"D"},{"id":"לוח 53","group":"TR","contract":"4S","declarer":"S","dealer":"S","auction":["1S","P","4S","P","P","P"],"lead":"2C","hands":{"N":"QT43.K8.AQJ5.QJ6","E":"K7.T952.62.K9853","S":"A9852.AQ73.KT7.T","W":"J6.J64.9843.A742"},"approved":true,"kind":"D"},{"id":"לוח 54","group":"TR","contract":"3H","declarer":"S","dealer":"S","auction":["1H","P","3H","P","P","P"],"lead":"4C","hands":{"N":"K53.KQ3.A94.T632","E":"T7642.9.KT3.KJ97","S":"A98.AJT84.QJ86.5","W":"QJ.7652.752.AQ84"},"approved":true,"kind":"D"},{"id":"לוח 55","group":"TR","contract":"4S","declarer":"S","dealer":"S","auction":["1S","P","3S","P","4S","P","P","P"],"lead":"4D","hands":{"N":"T75.KJ5.KJ.A8752","E":"9642.A87.T5.JT43","S":"AKQJ8.Q3.Q76.KQ9","W":"3.T9642.A98432.6"},"approved":true,"kind":"D"},{"id":"לוח 56","group":"TR","contract":"3S","declarer":"S","dealer":"S","auction":["1S","P","3S","P","P","P"],"lead":"5D","hands":{"N":"JT82.T7.KJ63.AJ4","E":"K7.QJ984.A92.KT2","S":"A9654.AK62.7.Q96","W":"Q3.53.QT854.8753"},"approved":true,"kind":"D"},{"id":"לוח 57","group":"TR","contract":"4S","declarer":"S","dealer":"S","auction":["1S","P","2S","P","4S","P","P","P"],"lead":"5D","hands":{"N":"T762.Q4.A9.J9874","E":"Q93.863.KT842.T2","S":"AK854.AJ52.Q.AK5","W":"J.KT97.J7653.Q63"},"approved":true,"kind":"D"},{"id":"לוח 58","group":"TR","contract":"3S","declarer":"S","dealer":"S","auction":["1S","P","3S","P","P","P"],"lead":"4D","hands":{"N":"A95.87.KQ85.J943","E":"QJ4.KQT3.6.AKT52","S":"KT863.AJ9.A732.6","W":"72.6542.JT94.Q87"},"approved":true,"kind":"D"},{"id":"לוח 59","group":"TR","contract":"4S","declarer":"S","dealer":"S","auction":["1S","P","3S","P","4S","P","P","P"],"lead":"7H","hands":{"N":"984.K.KT8.AQT975","E":"J65.AT64.J752.K6","S":"AKQ72.QJ9.AQ4.82","W":"T3.87532.963.J43"},"approved":true,"kind":"D"},{"id":"לוח 60","group":"TR","contract":"4S","declarer":"S","dealer":"S","auction":["1S","P","4S","P","P","P"],"lead":"8H","hands":{"N":"AQ74.K.AQ853.654","E":"92.542.KJT942.72","S":"KJ863.AT6.6.KQT3","W":"T5.QJ9873.7.AJ98"},"approved":true,"kind":"D"},{"id":"לוח 61","group":"TR","contract":"4H","declarer":"S","dealer":"S","auction":["1H","P","3H","P","4H","P","P","P"],"lead":"7S","hands":{"N":"J8.AJ43.QT72.A87","E":"KT654.K82.J.KQJ2","S":"AQ.Q9765.AK95.T6","W":"9732.T.8643.9543"},"approved":true,"kind":"D"},{"id":"לוח 62","group":"TR","contract":"4H","declarer":"S","dealer":"S","auction":["1H","P","4H","P","P","P"],"lead":"5D","hands":{"N":"4.J73.KQ932.AKQ4","E":"KT32.QT8.764.T86","S":"AQ96.A96542.J.J5","W":"J875.K.AT85.9732"},"approved":true,"kind":"D"},{"id":"לוח 63","group":"TR","contract":"4H","declarer":"S","dealer":"S","auction":["1H","P","3H","P","4H","P","P","P"],"lead":"9S","hands":{"N":"542.AJ32.Q954.QJ","E":"86.QT4.KT73.T764","S":"AJ3.K9765.AJ.A98","W":"KQT97.8.862.K532"},"approved":true,"kind":"D"},{"id":"לוח 64","group":"TR","contract":"4S","declarer":"S","dealer":"S","auction":["1S","P","4S","P","P","P"],"lead":"2D","hands":{"N":"KT7.KJ.AJT8.J432","E":".9543.Q543.KT876","S":"QJ9842.AT2.6.AQ5","W":"A653.Q876.K972.9"},"approved":true,"kind":"D"},{"group":"TR","kind":"R","contract":"4S","declarer":"S","dealer":"S","auction":["1S","P","2S","P","4S","P","P","P"],"lead":"5H","hands":{"N":"QJT.32.JT975.A62","E":"975.Q87.K32.JT74","S":"AK862.AJ6.A6.K85","W":"43.KT954.Q84.Q93"},"approved":true,"top":9,"dd":11,"ruffSuit":"H","ruffs":1,"id":"לוח 65"},{"group":"TR","kind":"R","contract":"4S","declarer":"S","dealer":"S","auction":["1S","P","3S","P","4S","P","P","P"],"lead":"8H","hands":{"N":"Q85.64.KQT843.KJ","E":"974.KQ5.92.QT976","S":"AKJT6.A72.75.A42","W":"32.JT983.AJ6.853"},"approved":true,"top":8,"dd":11,"ruffSuit":"H","ruffs":2,"id":"לוח 66"},{"group":"TR","kind":"R","contract":"4H","declarer":"S","dealer":"S","auction":["1H","P","3H","P","4H","P","P","P"],"lead":"7C","hands":{"N":"AT2.A98.KJT432.5","E":"J8653.J6.A975.J8","S":"KQ.KT743.8.AK432","W":"974.Q52.Q6.QT976"},"approved":true,"top":7,"dd":11,"ruffSuit":"C","ruffs":3,"id":"לוח 67"},{"group":"TR","kind":"R","contract":"2S","declarer":"S","dealer":"S","auction":["1S","P","2S","P","P","P"],"lead":"7C","hands":{"N":"432.A32.QT843.K8","E":"AQJ8.JT6.J765.92","S":"T9765.K74.AK.A43","W":"K.Q985.92.QJT765"},"approved":true,"top":7,"dd":9,"ruffSuit":"C","ruffs":1,"id":"לוח 68"},{"group":"TR","kind":"R","contract":"2S","declarer":"S","dealer":"S","auction":["1S","P","2S","P","P","P"],"lead":"9D","hands":{"N":"J64.84.542.AJ962","E":"32.KJT62.K3.K843","S":"AKQT8.A973.T86.7","W":"975.Q5.AQJ97.QT5"},"approved":true,"top":7,"dd":8,"ruffSuit":"H","ruffs":2,"id":"לוח 69"},{"group":"TR","kind":"M","contract":"4S","declarer":"S","dealer":"S","auction":["1S","P","3S","P","4S","P","P","P"],"lead":"7D","hands":{"N":"Q94.T8.AQ4.A6432","E":"8753.A6532.65.T7","S":"AKJT62.QJ7.J92.K","W":".K94.KT873.QJ985"},"approved":true,"top":9,"dd":11,"ruffSuit":"H","ruffs":1,"id":"לוח 70"},{"group":"TR","kind":"R","contract":"3H","declarer":"S","dealer":"S","auction":["1H","P","3H","P","P","P"],"lead":"2S","hands":{"N":"T96.QJ8.AQT62.J6","E":"AJ875.T2.K83.Q85","S":"Q.AK643.J7.AT932","W":"K432.975.954.K74"},"approved":true,"top":6,"dd":10,"ruffSuit":"C","ruffs":3,"id":"לוח 71"},{"group":"TR","kind":"R","contract":"2S","declarer":"S","dealer":"S","auction":["1S","P","2S","P","P","P"],"lead":"3H","hands":{"N":"QT9.97.AJT9.Q974","E":"654.QJ.Q63.AT632","S":"AKJ87.T865.5.KJ8","W":"32.AK432.K8742.5"},"approved":true,"top":6,"dd":8,"ruffSuit":"H","ruffs":2,"id":"לוח 72"},{"group":"TR","kind":"R","contract":"4S","declarer":"S","dealer":"S","auction":["1S","P","4S","P","P","P"],"lead":"9D","hands":{"N":"KQJ.Q65.2.AQT873","E":"T964.KT973.AJ.54","S":"A8752.J4.KQ75.K9","W":"3.A82.T98643.J62"},"approved":true,"top":7,"dd":10,"ruffSuit":"D","ruffs":3,"id":"לוח 73"},{"group":"TR","kind":"R","contract":"2S","declarer":"S","dealer":"S","auction":["1S","P","2S","P","P","P"],"lead":"9H","hands":{"N":"AT7.Q42.42.QT964","E":"8642.73.AKJ73.83","S":"KQJ93.A86.965.A2","W":"5.KJT95.QT8.KJ75"},"approved":true,"top":7,"dd":9,"ruffSuit":"D","ruffs":1,"id":"לוח 74"},{"group":"TR","kind":"R","contract":"2H","declarer":"S","dealer":"S","auction":["1H","P","2H","P","P","P"],"lead":"6S","hands":{"N":"93.953.KQT765.Q4","E":"AKJ4.8.84.KJ9863","S":"7.AKQJ2.A932.752","W":"QT8652.T764.J.AT"},"approved":true,"top":7,"dd":9,"ruffSuit":"C","ruffs":1,"id":"לוח 75"},{"group":"TR","kind":"R","contract":"2H","declarer":"S","dealer":"S","auction":["1H","P","2H","P","P","P"],"lead":"7C","hands":{"N":"95.Q43.KQJ532.T5","E":"KQT43.8.94.KQJ43","S":"AJ62.K9765.A6.A9","W":"87.AJT2.T87.8762"},"approved":true,"top":6,"dd":9,"ruffSuit":"S","ruffs":2,"id":"לוח 76"},{"group":"TR","kind":"M","contract":"2H","declarer":"S","dealer":"S","auction":["1H","P","2H","P","P","P"],"lead":"6S","hands":{"N":"J9.JT9.Q32.AJT86","E":"Q82.6532.AK94.72","S":"K43.AKQ874.J8.93","W":"AT765..T765.KQ54"},"approved":true,"top":7,"dd":9,"ruffSuit":"S","ruffs":1,"id":"לוח 77"},{"group":"TR","kind":"R","contract":"3H","declarer":"S","dealer":"S","auction":["1H","P","3H","P","P","P"],"lead":"4S","hands":{"N":"76.854.A8.AKJ865","E":"AK932.9.T93.QT32","S":"T8.AKQ32.KJ72.74","W":"QJ54.JT76.Q654.9"},"approved":true,"top":7,"dd":10,"ruffSuit":"D","ruffs":2,"id":"לוח 78"},{"group":"TR","kind":"R","contract":"3H","declarer":"S","dealer":"S","auction":["1H","P","3H","P","P","P"],"lead":"3D","hands":{"N":"75.KQ6.8.AQJ8762","E":"Q984.87.AT64.KT5","S":"AT2.AJT93.K75.93","W":"KJ63.542.QJ932.4"},"approved":true,"top":7,"dd":10,"ruffSuit":"D","ruffs":3,"id":"לוח 79"},{"group":"TR","kind":"R","contract":"4H","declarer":"S","dealer":"S","auction":["1H","P","4H","P","P","P"],"lead":"5C","hands":{"N":"AT.832.AKQ954.93","E":"J96542.JT.T76.K8","S":"K73.AQ974.3.AJ74","W":"Q8.K65.J82.QT652"},"approved":true,"top":7,"dd":11,"ruffSuit":"C","ruffs":3,"id":"לוח 80"},{"group":"TR","kind":"M","contract":"2H","declarer":"S","dealer":"S","auction":["1H","P","2H","P","P","P"],"lead":"7S","hands":{"N":"65.QT3.JT82.A852","E":"K32.54.753.KQ974","S":"AT8.AKJ862.964.T","W":"QJ974.97.AKQ.J63"},"approved":true,"top":7,"dd":9,"ruffSuit":"S","ruffs":1,"id":"לוח 81"},{"group":"TR","kind":"M","contract":"2S","declarer":"S","dealer":"S","auction":["1S","P","2S","P","P","P"],"lead":"5H","hands":{"N":"QT3.AQ.8642.7654","E":"75.K6.K975.KJT93","S":"AKJ864.T74.AJ.Q8","W":"92.J98532.QT3.A2"},"approved":true,"top":7,"dd":9,"ruffSuit":"H","ruffs":1,"id":"לוח 82"},{"group":"TR","kind":"M","contract":"2S","declarer":"S","dealer":"S","auction":["1S","P","2S","P","P","P"],"lead":"6H","hands":{"N":"Q82.K87.J9632.53","E":"963.Q52.AQ.K8764","S":"AKJT75.A3.T7.QJ9","W":"4.JT964.K854.AT2"},"approved":true,"top":7,"dd":9,"ruffSuit":"C","ruffs":1,"id":"לוח 83"},{"group":"TR","kind":"M","contract":"3S","declarer":"S","dealer":"S","auction":["1S","P","3S","P","P","P"],"lead":"5D","hands":{"N":"AT8.73.Q632.AT97","E":"76.KQT52.A9.K543","S":"KQJ932.A94.JT.J2","W":"54.J86.K8754.Q86"},"approved":true,"top":8,"dd":10,"ruffSuit":"H","ruffs":1,"id":"לוח 84"},{"group":"TR","kind":"M","contract":"4H","declarer":"S","dealer":"S","auction":["1H","P","3H","P","4H","P","P","P"],"lead":"4S","hands":{"N":"53.QJ8.AJT986.K5","E":"AJT6.762.K2.QT83","S":"Q8.AKT953.Q5.AJ4","W":"K9742.4.743.9762"},"approved":true,"top":9,"dd":10,"ruffSuit":"C","ruffs":1,"id":"לוח 85"},{"group":"TR","kind":"M","contract":"2H","declarer":"S","dealer":"S","auction":["1H","P","2H","P","P","P"],"lead":"5C","hands":{"N":"764.J73.AJ973.Q2","E":"KQ85.9.QT65.K974","S":"A3.AKQT52.82.J83","W":"JT92.864.K4.AT65"},"approved":true,"top":7,"dd":9,"ruffSuit":"C","ruffs":1,"id":"לוח 86"},{"group":"MI","kind":"M","key":"3m","contract":"3D","declarer":"S","dealer":"S","auction":["1D","P","3D","P","P","P"],"lead":"8C","hands":{"N":"732.AT9.Q852.AQ4","E":"JT4.Q8643.J.J962","S":"AQ85.75.K9764.K3","W":"K96.KJ2.AT3.T875"},"approved":true,"top":5,"dd":10,"open":"D","id":"לוח 87"},{"group":"MI","kind":"M","key":"3m","contract":"3C","declarer":"S","dealer":"S","auction":["1C","P","3C","P","P","P"],"lead":"6S","hands":{"N":"Q.AJ4.AT943.8643","E":"A874.QT8.KQ5.QT9","S":"K5.962.J86.AKJ72","W":"JT9632.K753.72.5"},"approved":true,"top":4,"dd":9,"open":"C","id":"לוח 88"},{"group":"MI","kind":"N","key":"R1NT","contract":"1NT","declarer":"S","dealer":"S","auction":["1D","P","1H","P","1NT","P","P","P"],"lead":"4C","hands":{"N":"J64.AT82.AT62.76","E":"K32.K63.J8753.A8","S":"QT97.94.KQ94.KQT","W":"A85.QJ75..J95432"},"approved":true,"top":4,"dd":8,"open":"D","id":"לוח 89"},{"group":"MI","kind":"M","key":"2m","contract":"2C","declarer":"S","dealer":"S","auction":["1C","P","2C","P","P","P"],"lead":"4S","hands":{"N":"Q75.Q6.AT2.JT874","E":"963.A93.6543.K65","S":"KT2.K842.KQJ.Q92","W":"AJ84.JT75.987.A3"},"approved":true,"top":3,"dd":9,"open":"C","id":"לוח 90"},{"group":"MI","kind":"M","key":"2m","contract":"2C","declarer":"S","dealer":"S","auction":["1C","P","2C","P","P","P"],"lead":"8H","hands":{"N":"J98.K9.93.QJ9752","E":"A73.742.QJT64.A8","S":"KQ42.T53.A8.KT63","W":"T65.AQJ86.K752.4"},"approved":true,"top":1,"dd":9,"open":"C","id":"לוח 91"},{"group":"MI","kind":"N","key":"R1NT3","contract":"3NT","declarer":"S","dealer":"S","auction":["1C","P","1H","P","1NT","P","3NT","P","P","P"],"lead":"2S","hands":{"N":"AKJ9.JT74.A87.64","E":"74.Q82.6432.Q932","S":"T85.K63.KQ5.KJT8","W":"Q632.A95.JT9.A75"},"approved":true,"top":5,"dd":10,"open":"C","id":"לוח 92"},{"group":"MI","kind":"N","key":"2NT","contract":"2NT","declarer":"S","dealer":"N","auction":["1C","P","2NT","P","P","P"],"lead":"6H","hands":{"N":"A42.QJ8.74.AK964","E":"K765.75.KT982.52","S":"Q98.K42.QJ653.Q8","W":"JT3.AT963.A.JT73"},"approved":true,"top":4,"dd":8,"open":"C","id":"לוח 93"},{"group":"MI","kind":"N","key":"2NT","contract":"2NT","declarer":"S","dealer":"N","auction":["1D","P","2NT","P","P","P"],"lead":"5S","hands":{"N":"K7.9764.AQT9.A87","E":"J9.AT82.42.KJ943","S":"Q84.KJ5.K63.QT65","W":"AT6532.Q3.J875.2"},"approved":true,"top":4,"dd":9,"open":"D","id":"לוח 94"},{"group":"MI","kind":"N","key":"R1NT","contract":"1NT","declarer":"S","dealer":"S","auction":["1C","P","1S","P","1NT","P","P","P"],"lead":"4H","hands":{"N":"AQT7.65.K65.9542","E":"K53.A92.Q974.KQT","S":"96.QJT.A83.AJ873","W":"J842.K8743.JT2.6"},"approved":true,"top":4,"dd":8,"open":"C","id":"לוח 95"},{"group":"MI","kind":"N","key":"R1NT","contract":"1NT","declarer":"S","dealer":"S","auction":["1D","P","1H","P","1NT","P","P","P"],"lead":"5D","hands":{"N":"KT65.KQJ3.873.65","E":"QJ87.A42.K4.AJ94","S":"A4.T85.AQ92.QT82","W":"932.976.JT65.K73"},"approved":true,"top":3,"dd":8,"open":"D","id":"לוח 96"},{"group":"MI","kind":"N","key":"1NT","contract":"1NT","declarer":"S","dealer":"N","auction":["1C","P","1NT","P","P","P"],"lead":"5C","hands":{"N":"K652.983.KT3.AKT","E":"AJ83.AQ52.QJ.932","S":"Q7.JT4.A9872.Q74","W":"T94.K76.654.J865"},"approved":true,"top":5,"dd":8,"open":"C","id":"לוח 97"},{"group":"MI","kind":"M","key":"R2m","contract":"2C","declarer":"S","dealer":"S","auction":["1C","P","1H","P","2C","P","P","P"],"lead":"6H","hands":{"N":"AT86.9732.Q854.K","E":"Q72.KJ.KT92.Q763","S":"K9.A54.73.AJT954","W":"J543.QT86.AJ6.82"},"approved":true,"top":5,"dd":8,"open":"C","id":"לוח 98"},{"group":"MI","kind":"M","key":"R2m","contract":"2D","declarer":"S","dealer":"S","auction":["1D","P","1S","P","2D","P","P","P"],"lead":"4H","hands":{"N":"AJ96.QT6.T82.854","E":"K54.AK7.J7.AQJ96","S":"Q32.8.AKQ943.KT2","W":"T87.J95432.65.73"},"approved":true,"top":4,"dd":9,"open":"D","id":"לוח 99"},{"group":"MI","kind":"N","key":"2NT3","contract":"3NT","declarer":"S","dealer":"N","auction":["1D","P","2NT","P","3NT","P","P","P"],"lead":"8S","hands":{"N":"A7.KJ5.AQT954.75","E":"532.Q87.K762.A62","S":"QJ4.A93.J83.K984","W":"KT986.T642..QJT3"},"approved":true,"top":4,"dd":10,"open":"D","id":"לוח 100"},{"group":"MI","kind":"M","key":"2m","contract":"2C","declarer":"S","dealer":"S","auction":["1C","P","2C","P","P","P"],"lead":"3S","hands":{"N":"652.93.K93.AT643","E":"74.AKQ84.QT75.J2","S":"AJT9.62.A82.K875","W":"KQ83.JT75.J64.Q9"},"approved":true,"top":5,"dd":9,"open":"C","id":"לוח 101"},{"group":"MI","kind":"M","key":"2m","contract":"2D","declarer":"S","dealer":"S","auction":["1D","P","2D","P","P","P"],"lead":"8H","hands":{"N":"AT5.643.A987.J64","E":"J6.QT72.JT6.KQ53","S":"Q97.J.KQ542.A972","W":"K8432.AK985.3.T8"},"approved":true,"top":5,"dd":9,"open":"D","id":"לוח 102"},{"group":"MI","kind":"N","key":"R1NT3","contract":"3NT","declarer":"S","dealer":"S","auction":["1C","P","1H","P","1NT","P","3NT","P","P","P"],"lead":"3S","hands":{"N":"K954.A975.AQ3.32","E":"QT8.T43.J92.A984","S":"J2.KQ2.KT4.KJT65","W":"A763.J86.8765.Q7"},"approved":true,"top":6,"dd":10,"open":"C","id":"לוח 103"},{"group":"MI","kind":"N","key":"1NT","contract":"1NT","declarer":"S","dealer":"N","auction":["1D","P","1NT","P","P","P"],"lead":"6S","hands":{"N":"3.A532.Q8763.AQT","E":"QT7.KQJT.A5.K762","S":"AK4.764.J94.J853","W":"J98652.98.KT2.94"},"approved":true,"top":4,"dd":7,"open":"D","id":"לוח 104"},{"group":"MI","kind":"N","key":"2NT","contract":"2NT","declarer":"S","dealer":"N","auction":["1D","P","2NT","P","P","P"],"lead":"5D","hands":{"N":"A643.A94.J932.A8","E":"J75.KT7532.A.T96","S":"T98.QJ6.Q86.KQ53","W":"KQ2.8.KT754.J742"},"approved":true,"top":5,"dd":8,"open":"D","id":"לוח 105"},{"group":"MI","kind":"N","key":"3NT","contract":"3NT","declarer":"S","dealer":"N","auction":["1C","P","3NT","P","P","P"],"lead":"4S","hands":{"N":"7.KT75.AK4.AT986","E":"J986.A.J98653.73","S":"KQ2.QJ6.QT7.KQ52","W":"AT543.98432.2.J4"},"approved":true,"top":6,"dd":9,"open":"C","id":"לוח 106"},{"group":"MI","kind":"M","key":"3m","contract":"3C","declarer":"S","dealer":"S","auction":["1C","P","3C","P","P","P"],"lead":"2H","hands":{"N":"982.J86.A97.AQ92","E":"AJ74.93.QT64.J85","S":"K6.AQ75.J32.K643","W":"QT53.KT42.K85.T7"},"approved":true,"top":5,"dd":10,"open":"C","id":"לוח 107"},{"group":"MI","kind":"N","key":"2NT3","contract":"3NT","declarer":"S","dealer":"N","auction":["1D","P","2NT","P","3NT","P","P","P"],"lead":"6H","hands":{"N":"KJT3.KQ42.AQ73.7","E":"AQ9754.9.T94.986","S":"82.JT3.KJ2.AJT52","W":"6.A8765.865.KQ43"},"approved":true,"top":5,"dd":9,"open":"D","id":"לוח 108"},{"group":"MI","kind":"N","key":"2NT3","contract":"3NT","declarer":"S","dealer":"N","auction":["1D","P","2NT","P","3NT","P","P","P"],"lead":"3C","hands":{"N":"AKJ9.Q3.AJ543.T8","E":"T4.A98542.T8.KJ9","S":"Q82.KT6.Q62.A652","W":"7653.J7.K97.Q743"},"approved":true,"top":6,"dd":9,"open":"D","id":"לוח 109"},{"group":"MI","kind":"N","key":"1NT","contract":"1NT","declarer":"S","dealer":"N","auction":["1D","P","1NT","P","P","P"],"lead":"8H","hands":{"N":"Q3.J94.AQJ72.K96","E":"AJ8542.T7.K3.Q83","S":"K76.652.9.AJT754","W":"T9.AKQ83.T8654.2"},"approved":true,"top":3,"dd":8,"open":"D","id":"לוח 110"},{"group":"MI","kind":"N","key":"3m3NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1C","P","3C","P","3NT","P","P","P"],"lead":"8H","hands":{"N":"5.J32.KJ652.AQ94","E":"QT964.54.T74.T32","S":"K732.KT7.A93.KJ8","W":"AJ8.AQ986.Q8.765"},"approved":true,"top":6,"dd":10,"open":"C","id":"לוח 111"},{"group":"MI","kind":"N","key":"3NT","contract":"3NT","declarer":"S","dealer":"N","auction":["1C","P","3NT","P","P","P"],"lead":"7S","hands":{"N":"AT63.A842.82.AJ8","E":"4.KQ.Q9765.Q9654","S":"KJ.J63.AKJT43.T3","W":"Q98752.T975..K72"},"approved":true,"top":6,"dd":10,"open":"C","id":"לוח 112"},{"group":"MI","kind":"N","key":"3NT","contract":"3NT","declarer":"S","dealer":"N","auction":["1C","P","3NT","P","P","P"],"lead":"9H","hands":{"N":"AQ63.J74.T4.AQ76","E":"9742.AK53.Q932.2","S":"JT.Q6.AK876.KJ85","W":"K85.T982.J5.T943"},"approved":true,"top":7,"dd":10,"open":"C","id":"לוח 113"},{"group":"MI","kind":"N","key":"3NT","contract":"3NT","declarer":"S","dealer":"N","auction":["1C","P","3NT","P","P","P"],"lead":"4S","hands":{"N":"K86.K842.AQ.J976","E":"A53.AT73.764.Q85","S":"J72.QJ9.KT32.AK3","W":"QT94.65.J985.T42"},"approved":true,"top":5,"dd":9,"open":"C","id":"לוח 114"},{"group":"MI","kind":"N","key":"3NT","contract":"3NT","declarer":"S","dealer":"N","auction":["1C","P","3NT","P","P","P"],"lead":"6H","hands":{"N":"Q6.AQ9.532.KJ632","E":"AJ9853.8532.T8.T","S":"K74.T.AQ74.AQ874","W":"T2.KJ764.KJ96.95"},"approved":true,"top":6,"dd":10,"open":"C","id":"לוח 115"},{"group":"MI","kind":"N","key":"3NT","contract":"3NT","declarer":"S","dealer":"N","auction":["1C","P","3NT","P","P","P"],"lead":"5S","hands":{"N":"A9.975.A73.KQJT8","E":"KJT7.J86.KJ2.752","S":"Q64.AKQ.Q9654.93","W":"8532.T432.T8.A64"},"approved":true,"top":5,"dd":10,"open":"C","id":"לוח 116"},{"group":"MI","kind":"F","key":"5m","contract":"5C","declarer":"S","dealer":"S","auction":["1C","P","3C","P","5C","P","P","P"],"lead":"6D","hands":{"N":"KT8.T96.94.AQJ93","E":"743.J8532.K5.T72","S":"AQJ9.AK.QT7.K865","W":"652.Q74.AJ8632.4"},"approved":true,"top":10,"dd":11,"open":"C","id":"לוח 117"},{"group":"MI","kind":"N","key":"3m3NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1D","P","3D","P","3NT","P","P","P"],"lead":"9C","hands":{"N":"986.Q53.KT97.KQ6","E":"QJT42.KJ6.53.AJ2","S":"AK53.A982.AQJ6.5","W":"7.T74.842.T98743"},"approved":true,"top":7,"dd":9,"open":"D","id":"לוח 118"},{"group":"MI","kind":"N","key":"3m3NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1C","P","3C","P","3NT","P","P","P"],"lead":"9D","hands":{"N":"94.Q8.QJ86.AKT64","E":"AQ63.7643.A7.983","S":"KJ75.KJ9.K5.QJ75","W":"T82.AT52.T9432.2"},"approved":true,"top":5,"dd":10,"open":"C","id":"לוח 119"},{"group":"MI","kind":"N","key":"3m3NT","contract":"3NT","declarer":"S","dealer":"S","auction":["1D","P","3D","P","3NT","P","P","P"],"lead":"5H","hands":{"N":"6.T94.AK432.AT96","E":"KQJT2.873.5.KQ54","S":"A953.AK.Q986.J73","W":"874.QJ652.JT7.82"},"approved":true,"top":7,"dd":9,"open":"D","id":"לוח 120"},{"group":"MI","kind":"F","key":"5m","contract":"5D","declarer":"S","dealer":"S","auction":["1D","P","3D","P","5D","P","P","P"],"lead":"7S","hands":{"N":"QJ.KQ8.JT753.QT8","E":"KT65.J4.92.76432","S":"3.A72.AKQ64.AK95","W":"A98742.T9653.8.J"},"approved":true,"top":11,"dd":12,"open":"D","id":"לוח 121"},{"group":"MI","kind":"F","key":"5m","contract":"5D","declarer":"S","dealer":"S","auction":["1D","P","3D","P","5D","P","P","P"],"lead":"7C","hands":{"N":"87.KJ9.AKT876.T6","E":"Q65432.T6.3.KJ85","S":"AKJT.AQ54.QJ94.2","W":"9.8732.52.AQ9743"},"approved":true,"top":12,"dd":12,"open":"D","id":"לוח 122"},{"group":"MI","kind":"J","key":"M2","contract":"2S","declarer":"S","dealer":"N","auction":["1C","P","1S","P","2S","P","P","P"],"lead":"9C","hands":{"N":"KT97.AK63.K4.762","E":"J42.T84.A876.Q53","S":"Q853.J72.JT95.A4","W":"A6.Q95.Q32.KJT98"},"approved":true,"top":3,"dd":9,"open":"C","id":"לוח 123"},{"group":"MI","kind":"J","key":"M3","contract":"3S","declarer":"S","dealer":"N","auction":["1C","P","1S","P","3S","P","P","P"],"lead":"2C","hands":{"N":"AKT2.J9.3.AQJ743","E":"Q93.AK632.A9842.","S":"J864.QT5.KQT.T86","W":"75.874.J765.K952"},"approved":true,"top":3,"dd":9,"open":"C","id":"לוח 124"},{"group":"MI","kind":"J","key":"M2","contract":"2H","declarer":"S","dealer":"N","auction":["1C","P","1H","P","2H","P","P","P"],"lead":"4C","hands":{"N":"KJT7.QT43.94.AK6","E":"A52.96.QJT8.Q752","S":"Q94.A875.76532.9","W":"863.KJ2.AK.JT843"},"approved":true,"top":3,"dd":9,"open":"C","id":"לוח 125"},{"group":"MI","kind":"J","key":"M2M4","contract":"4H","declarer":"S","dealer":"N","auction":["1D","P","1H","P","2H","P","4H","P","P","P"],"lead":"7C","hands":{"N":"KQ3.KJ64.J954.A9","E":"A974.T3.A62.JT65","S":"652.AQ92.K73.KQ4","W":"JT8.875.QT8.8732"},"approved":true,"top":7,"dd":10,"open":"D","id":"לוח 126"},{"group":"MI","kind":"J","key":"M3","contract":"3H","declarer":"S","dealer":"N","auction":["1D","P","1H","P","3H","P","P","P"],"lead":"3D","hands":{"N":"A53.AK98.KJT75.6","E":"J64.Q643.8.KJT53","S":"Q987.JT72.A4.872","W":"KT2.5.Q9632.AQ94"},"approved":true,"top":5,"dd":9,"open":"D","id":"לוח 127"},{"group":"MI","kind":"J","key":"M2M4","contract":"4H","declarer":"S","dealer":"N","auction":["1D","P","1H","P","2H","P","4H","P","P","P"],"lead":"4C","hands":{"N":"KJ76.AJ54.AT4.J9","E":"T3.732.J862.A532","S":"AQ5.KQ96.Q95.Q76","W":"9842.T8.K73.KT84"},"approved":true,"top":9,"dd":10,"open":"D","id":"לוח 128"},{"group":"MI","kind":"J","key":"M2","contract":"2S","declarer":"S","dealer":"N","auction":["1D","P","1S","P","2S","P","P","P"],"lead":"7C","hands":{"N":"T983.AQ54.KQ54.Q","E":"QJ75.JT9.A.AKJ93","S":"AK42.72.T9876.T4","W":"6.K863.J32.87652"},"approved":true,"top":3,"dd":9,"open":"D","id":"לוח 129"},{"group":"MI","kind":"J","key":"M4","contract":"4S","declarer":"S","dealer":"N","auction":["1C","P","1S","P","4S","P","P","P"],"lead":"5D","hands":{"N":"AJT5.KQ94.A9.AJT","E":"8.632.QT632.Q865","S":"6432.AT5.J74.K72","W":"KQ97.J87.K85.943"},"approved":true,"top":7,"dd":10,"open":"C","id":"לוח 130"},{"group":"MI","kind":"J","key":"M4","contract":"4S","declarer":"S","dealer":"N","auction":["1D","P","1S","P","4S","P","P","P"],"lead":"5H","hands":{"N":"KQ85.A62.AKJ86.K","E":"T72.T97.T73.AJT8","S":"J643.K4.Q42.6432","W":"A9.QJ853.95.Q975"},"approved":true,"top":6,"dd":11,"open":"D","id":"לוח 131"},{"group":"MI","kind":"J","key":"M3M4","contract":"4H","declarer":"S","dealer":"N","auction":["1D","P","1H","P","3H","P","4H","P","P","P"],"lead":"6S","hands":{"N":"A.KT96.KT854.AJ6","E":"T9.A83.QJ62.8542","S":"J854.7542.A9.KQ3","W":"KQ7632.QJ.73.T97"},"approved":true,"top":6,"dd":11,"open":"D","id":"לוח 132"},{"group":"MI","kind":"J","key":"M3M4","contract":"4H","declarer":"S","dealer":"N","auction":["1D","P","1H","P","3H","P","4H","P","P","P"],"lead":"5C","hands":{"N":"K3.A983.AQ542.A9","E":"976.KJT.KT973.62","S":"AJ42.Q764.J6.KQ7","W":"QT85.52.8.JT8543"},"approved":true,"top":7,"dd":11,"open":"D","id":"לוח 133"}];</script>
+<script>
+(() => {
+// ---------------- solver (DDS, same wrapper as engine/dds/index.mjs) ----------------
+let solve;
+function initSolver() {
+  const _solve = Module.cwrap('solve', 'string', ['string', 'string', 'number', 'number']);
+  const SI = { S: 0, H: 1, D: 2, C: 3 };
+  solve = (pbn, trump, plays) => {
+    const buf = Module._malloc(8 * Math.max(1, plays.length));
+    plays.forEach((p, i) => { Module.setValue(buf + i * 8, SI[p.suit], 'i32'); Module.setValue(buf + i * 8 + 4, p.rank, 'i32'); });
+    const r = JSON.parse(_solve(pbn, trump, plays.length, buf));
+    Module._free(buf);
+    // the solver names one card per group of equivalent cards; the rest are in `equals`
+    return r.plays.flatMap((p) => [p.rank, ...(p.equals || [])].map((x) => ({ card: { suit: p.suit, rank: rk(String(x)) }, score: p.score })));
+  };
+}
+
+// ---------------- cards ----------------
+const SUITS = ['S', 'H', 'D', 'C'], SEATS = ['N', 'E', 'S', 'W'];
+const RK = { A: 14, K: 13, Q: 12, J: 11, T: 10 }, NM = { 14: 'A', 13: 'K', 12: 'Q', 11: 'J', 10: '10' };
+const SYM = { S: '♠', H: '♥', D: '♦', C: '♣' };
+const HEB = { N: 'צפון', E: 'מזרח', S: 'דרום', W: 'מערב' };
+const rk = (ch) => RK[ch] || +ch;
+const nm = (r) => NM[r] || String(r);
+const same = (a, b) => a.suit === b.suit && a.rank === b.rank;
+const left = (s) => SEATS[(SEATS.indexOf(s) + 1) % 4];
+const partner = (s) => SEATS[(SEATS.indexOf(s) + 2) % 4];
+const side = (s) => (s === 'N' || s === 'S' ? 'NS' : 'EW');
+const parseHand = (s) => s.split('.').flatMap((t, i) => [...t.replace(/-/g, '')].map((ch) => ({ suit: SUITS[i], rank: rk(ch) })));
+const parseCard = (s) => ({ rank: rk(s.slice(0, -1) === '10' ? 'T' : s[0]), suit: s.slice(-1) });
+const pbnHand = (h) => SUITS.map((s) => h.filter((c) => c.suit === s).sort((a, b) => b.rank - a.rank).map((c) => c.rank === 10 ? 'T' : nm(c.rank)).join('')).join('.');
+const fmtHand = (h) => SUITS.map((s) => h.filter((c) => c.suit === s).sort((a, b) => b.rank - a.rank).map((c) => c.rank === 10 ? 'T' : nm(c.rank)).join('') || '-').join('.');
+const cardHtml = (c, cls = '') => `<span class="card c ${c.suit === 'H' || c.suit === 'D' ? 'red' : ''} ${cls}">${nm(c.rank)}${SYM[c.suit]}</span>`;
+const bidHtml = (b) => {
+  if (b === 'P') return 'פס';
+  if (b === 'X') return '<bdi>X</bdi>';
+  if (b === 'XX') return '<bdi>XX</bdi>';
+  const st = b.slice(1);
+  return `<bdi class="bid">${b[0]}${st === 'NT' ? 'NT' : `<span style="color:${st === 'H' || st === 'D' ? 'var(--red)' : 'inherit'}">${SYM[st]}</span>`}</bdi>`;
+};
+
+// ---------------- game state ----------------
+let epoch = 0; // bumped by start and undo; a waiting defence chain from an older epoch is dropped
+let lesson = 0, B, G, busy = false, replayTimer = null, showDef = false, history = [];
+
+function newGame(board) {
+  B = board;
+  const hands = Object.fromEntries(SEATS.map((s) => [s, parseHand(board.hands[s])]));
+  const lvl = +board.contract[0], strain = board.contract.slice(1) === 'NT' ? 'NT' : board.contract[1];
+  G = {
+    hands, strain, trump: strain === 'NT' ? null : strain, needed: lvl + 6,
+    declarer: board.declarer, dummy: partner(board.declarer),
+    leader: left(board.declarer), turn: left(board.declarer), plays: [], won: { NS: 0, EW: 0 },
+    played: [], tricks: [], voids: Object.fromEntries(SEATS.map((s) => [s, {}])), lastLedBy: { NS: null, EW: null },
+    discarded: Object.fromEntries(SEATS.map((s) => [s, {}])), swaps: [], over: false, open: false, replay: false,
+  };
+}
+const legal = (seat) => {
+  const h = G.hands[seat];
+  if (!G.plays.length) return h;
+  const f = h.filter((c) => c.suit === G.plays[0].card.suit);
+  return f.length ? f : h;
+};
+function beats(c, w) {
+  const led = G.plays.length ? G.plays[0].card.suit : c.suit;
+  if (G.trump && c.suit === G.trump && w.suit !== G.trump) return true;
+  if (c.suit === w.suit && c.rank > w.rank) return true;
+  return false;
+}
+function winning() {
+  let best = G.plays[0];
+  for (const p of G.plays.slice(1)) if (beatsOn(p.card, best.card)) best = p;
+  return best;
+}
+function beatsOn(c, w) {
+  if (G.trump && c.suit === G.trump && w.suit !== G.trump) return true;
+  return c.suit === w.suit && c.rank > w.rank;
+}
+function doPlay(card) {
+  const seat = G.turn;
+  const led = G.plays.length ? G.plays[0].card.suit : null;
+  if (led && card.suit !== led) G.voids[seat][led] = true;
+  if (led && card.suit !== led && card.suit !== G.trump) G.discarded[seat][card.suit] = (G.discarded[seat][card.suit] || 0) + 1;
+  if (!led) G.lastLedBy[side(seat)] = card.suit;
+  G.hands[seat] = G.hands[seat].filter((c) => !same(c, card));
+  G.plays.push({ seat, card });
+  G.played.push({ seat, card });
+  if (G.plays.length === 4) {
+    const w = winning();
+    G.won[side(w.seat)]++;
+    G.tricks.push({ plays: G.plays.slice(), winner: w.seat });
+    G.leader = w.seat; G.turn = w.seat;
+    return true;
+  }
+  G.turn = left(seat);
+  return false;
+}
+function solverChoices() {
+  const h = {};
+  for (const s of SEATS) h[s] = G.hands[s].slice();
+  for (const p of G.plays) h[p.seat].push(p.card);
+  const order = [];
+  let i = SEATS.indexOf(G.leader);
+  for (let k = 0; k < 4; k++) order.push(SEATS[(i + k) % 4]);
+  const pbn = G.leader + ':' + order.map((s) => pbnHand(h[s])).join(' ');
+  return solve(pbn, G.trump || 'N', G.plays.map((p) => p.card));
+}
+
+// ---------------- defence: human rules first, solver only where no rule applies ----------------
+// cards a defender cannot see: not his own, not dummy's, not played
+function unseenBy(seat) {
+  const out = [];
+  for (const s of SEATS) if (s !== seat && s !== G.dummy) out.push(...G.hands[s].map((c) => ({ ...c, holder: s })));
+  return out;
+}
+// no unplayed card of that suit higher than c anywhere outside this hand
+const isTop = (seat, c) => !SEATS.some((s) => s !== seat && G.hands[s].some((x) => x.suit === c.suit && x.rank > c.rank));
+// can an opponent still to play in this trick beat c? dummy is read from its cards, declarer from what is unseen
+function sure(seat, c) {
+  const pos = G.plays.length;
+  for (let k = 1; k < 4 - pos; k++) {
+    const s = SEATS[(SEATS.indexOf(seat) + k) % 4];
+    if (side(s) === side(seat)) continue;
+    const led = G.plays.length ? G.plays[0].card.suit : c.suit;
+    const cand = s === G.dummy ? G.hands[s] : unseenBy(seat).filter((x) => x.holder !== partner(seat));
+    const hasLed = s === G.dummy ? G.hands[s].some((x) => x.suit === led) : !G.voids[s][led];
+    for (const x of cand) {
+      if (hasLed) { if (x.suit === led && x.suit === c.suit && x.rank > c.rank) return false; }
+      else if (G.trump && x.suit === G.trump && (c.suit !== G.trump || x.rank > c.rank)) return false;
+    }
+  }
+  return true;
+}
+const lowest = (cs) => cs.slice().sort((a, b) => a.rank - b.rank)[0];
+const byRankAsc = (cs) => cs.slice().sort((a, b) => a.rank - b.rank);
+// lowest of the cards equivalent to c in this hand (no outside unplayed card between them)
+function lowestEquivalent(seat, c) {
+  const mine = G.hands[seat].filter((x) => x.suit === c.suit).sort((a, b) => b.rank - a.rank);
+  const outside = new Set(SEATS.filter((s) => s !== seat).flatMap((s) => G.hands[s].filter((x) => x.suit === c.suit).map((x) => x.rank)));
+  let cur = c;
+  for (const x of mine) {
+    if (x.rank >= cur.rank) continue;
+    let gap = false;
+    for (let r = x.rank + 1; r < cur.rank; r++) if (outside.has(r)) gap = true;
+    if (gap) break;
+    cur = x;
+  }
+  return cur;
+}
+// tricks my holding takes when declarer plays the suit out: each round one hand plays its top card,
+// the other its lowest; I win with the cheapest card that beats it, otherwise I play low
+function suitTricks(mine, a, b) {
+  const m = mine.map((c) => c.rank).sort((x, y) => x - y);
+  const A = a.map((c) => c.rank).sort((x, y) => y - x), Bh = b.map((c) => c.rank).sort((x, y) => y - x);
+  let won = 0;
+  const rounds = Math.max(A.length, Bh.length);
+  for (let r = 0; r < rounds && m.length; r++) {
+    let top;
+    if (A.length && (!Bh.length || A[0] >= Bh[0])) { top = A.shift(); Bh.pop(); } else { top = Bh.shift(); A.pop(); }
+    const i = m.findIndex((x) => x > top);
+    if (i >= 0) { m.splice(i, 1); won++; } else m.shift();
+  }
+  return won;
+}
+function discard(seat) {
+  const h = G.hands[seat];
+  const suits = SUITS.filter((s) => h.some((c) => c.suit === s));
+  let bestSuit = null, bestSpare = -1;
+  for (const s of suits) {
+    if (s === G.trump && suits.length > 1) continue;
+    const cs = h.filter((c) => c.suit === s);
+    // keep the honour and a guard, and as many of the top cards as it takes to win
+    // every trick this suit is worth against declarer's two hands
+    let keep = cs.some((c) => c.rank >= 11 && !isTop(seat, c)) ? 2 : 0;
+    const a = G.hands[G.dummy].filter((c) => c.suit === s), b = G.hands[G.declarer].filter((c) => c.suit === s);
+    const desc = cs.slice().sort((x, y) => y.rank - x.rank);
+    const full = suitTricks(desc, a, b);
+    let need = 0;
+    while (need < desc.length && suitTricks(desc.slice(0, need), a, b) < full) need++;
+    keep = Math.max(keep, need);
+    const spare = cs.length - keep;
+    if (spare > bestSpare || (spare === bestSpare && cs.length > h.filter((c) => c.suit === bestSuit).length)) { bestSpare = spare; bestSuit = s; }
+  }
+  if (bestSpare <= 0) {                         // no rule fits: the solver decides
+    const ch = solverChoices(); const m = Math.max(...ch.map((x) => x.score));
+    return ch.find((x) => x.score === m).card;
+  }
+  const cs = byRankAsc(h.filter((c) => c.suit === bestSuit));
+  const spareCards = cs.slice(0, bestSpare);
+  const wanted = cs.some((c) => isTop(seat, c) || c.rank >= 12);
+  const first = !G.discarded[seat][bestSuit];
+  return wanted && first ? spareCards[spareCards.length - 1] : spareCards[0];   // signal: high = want it
+}
+function ruffOrDiscard(seat, mustWin) {
+  const trumps = G.trump ? G.hands[seat].filter((c) => c.suit === G.trump) : [];
+  if (mustWin && trumps.length) {
+    const cur = winning().card;
+    const ok = byRankAsc(trumps).filter((c) => beatsOn(c, cur) && sure(seat, c));
+    if (ok.length) return ok[0];
+  }
+  return discard(seat);
+}
+// one suit on its own, both sides perfect: how many tricks declarer's side takes in it when
+// `first` leads the first round. After that only declarer's side leads it (from either hand) -
+// a defender who wins a round exits elsewhere. Tells a lead that gives a trick away.
+function suitSolve(hands, first) {
+  const memo = new Map();
+  const toArr = (h) => SEATS.map((s) => h[s].join(',')).join('|');
+  function round(h, l) {
+    const s4 = [0, 1, 2, 3].map((k) => SEATS[(SEATS.indexOf(l) + k) % 4]);
+    const walk = (i, cards, hh) => {
+      if (i === 4) {
+        let w = -1;
+        for (let k = 0; k < 4; k++) if (cards[k] !== null && (w < 0 || cards[k] > cards[w])) w = k;
+        return (side(s4[w]) === 'NS' ? 1 : 0) + rest(hh);
+      }
+      const s = s4[i], mine = hh[s];
+      if (!mine.length) return walk(i + 1, [...cards, null], hh);
+      let bv = null;
+      for (const r of new Set(mine)) {
+        const j = mine.indexOf(r);
+        const v = walk(i + 1, [...cards, r], { ...hh, [s]: mine.filter((x, k) => k !== j) });
+        if (bv === null || (side(s) === 'NS' ? v > bv : v < bv)) bv = v;
+      }
+      return bv;
+    };
+    return walk(0, [], h);
+  }
+  function rest(h) {
+    if (!h.N.length && !h.S.length) return 0;
+    const key = toArr(h);
+    if (memo.has(key)) return memo.get(key);
+    let v = 0;
+    for (const l of ['N', 'S']) if (h[l].length) v = Math.max(v, round(h, l));
+    memo.set(key, v);
+    return v;
+  }
+  return first === 'N' || first === 'S' ? rest(hands) : round(hands, first);
+}
+// does leading this suit hand declarer a trick he could not take by leading it himself?
+function leadCosts(seat, suit) {
+  const h = {};
+  for (const s of SEATS) h[s] = G.hands[s].filter((c) => c.suit === suit).map((c) => c.rank);
+  if (!h.N.length && !h.S.length) return false;
+  const theirs = suitSolve(h, 'N');
+  return suitSolve(h, seat) > theirs;
+}
+function leadCard(seat) {
+  const ch = solverChoices();
+  const score = (c) => ch.find((x) => same(x.card, c)).score;
+  let pool = G.hands[seat];
+  // no ruff and discard unless there is no choice
+  const rs = (c) => G.trump && c.suit !== G.trump && !G.hands[G.dummy].some((x) => x.suit === c.suit) && G.voids[G.declarer][c.suit]
+    && (G.hands[G.dummy].some((x) => x.suit === G.trump) || !G.voids[G.declarer][G.trump]);
+  const noRs = pool.filter((c) => !rs(c));
+  if (noRs.length) pool = noRs;
+  const best = Math.max(...pool.map(score));
+  // keep on with the suit this side started, unless it gives declarer a trick
+  const cont = G.lastLedBy.EW;
+  if (cont) {
+    const inSuit = pool.filter((c) => c.suit === cont && score(c) === best && !leadCosts(seat, c.suit));
+    if (inSuit.length) return lowest(inSuit);
+  }
+  let top = pool.filter((c) => score(c) === best);
+  // among leads the solver rates equal, keep away from a suit where the lead itself gives a trick
+  const safe = top.filter((c) => !leadCosts(seat, c.suit));
+  if (safe.length) top = safe;
+  const suit = top[0].suit;
+  return lowest(top.filter((c) => c.suit === suit));
+}
+// exception: a defender does not win with an ace when that sets up a suit for a dummy
+// that has no other way in; he takes it once declarer has no card left in the suit to cross with
+function holdUp(seat, c) {
+  if (c.rank !== 14 || c.suit === G.trump) return false;
+  const su = c.suit, dm = G.hands[G.dummy], decl = G.declarer;
+  const dmSuit = dm.filter((x) => x.suit === su);
+  if (dmSuit.length < 2) return false;
+  const dmTop = Math.max(...dmSuit.map((x) => x.rank));
+  // when dummy's own card is winning the trick, ducking only gives dummy the trick and the lead
+  // (removed 24/9/26: not in rules/endplay.md; board 13 lost a trick to it)
+  // the ace must be the defenders' only card that stops dummy's suit
+  if ([seat, partner(seat)].some((s) => G.hands[s].some((x) => x.suit === su && x.rank > dmTop && !same(x, c)))) return false;
+  const entry = dm.some((x) => x.suit !== su && !SEATS.some((s) => s !== G.dummy && G.hands[s].some((y) => y.suit === x.suit && y.rank > x.rank)));
+  if (entry || (G.trump && dm.some((x) => x.suit === G.trump))) return false;
+  const declPlayed = G.plays.some((p) => p.seat === decl);
+  const declLeft = G.hands[decl].filter((x) => x.suit === su).length - (declPlayed ? 0 : 1);
+  return declLeft >= 1;
+}
+function defend() {
+  const c = defendRaw();
+  if (G.plays.length && c.suit === G.plays[0].card.suit && holdUp(G.turn, c)) {
+    const low = G.hands[G.turn].filter((x) => x.suit === c.suit && x.rank !== 14);
+    if (low.length) return lowest(low);
+  }
+  return c;
+}
+function defendRaw() {
+  const seat = G.turn, pos = G.plays.length;
+  if (pos === 0) return leadCard(seat);
+  const led = G.plays[0].card.suit;
+  const follow = G.hands[seat].filter((c) => c.suit === led);
+  const cur = winning();
+  const partnerWins = side(cur.seat) === side(seat);
+  const beating = follow.filter((c) => beatsOn(c, cur.card));
+  if (pos === 1) {
+    if (!follow.length) return ruffOrDiscard(seat, true);
+    // a sure winner, but not when partner holds a higher card in the suit: a K that beats
+    // the table while partner holds the A wastes the K (board 12)
+    const partnerHigher = (c) => G.hands[partner(seat)].some((x) => x.suit === c.suit && x.rank > c.rank);
+    const sureW = byRankAsc(beating.filter((c) => sure(seat, c) && !partnerHigher(c)));
+    if (sureW.length) return sureW[0];
+    if (cur.card.rank >= 11) {                      // cover an honour with an honour
+      const cover = byRankAsc(beating.filter((c) => c.rank >= 11));
+      if (cover.length) return cover[0];
+    }
+    const desc = follow.slice().sort((a, b) => b.rank - a.rank);
+    if (desc.length >= 3 && desc[0].rank >= 11) {   // sequence KQJ: play the lowest of it
+      let n = 1;
+      while (n < desc.length && desc[n].rank === desc[n - 1].rank - 1) n++;
+      if (n >= 3) return desc[n - 1];
+    }
+    return lowest(follow);
+  }
+  if (pos === 2) {
+    if (!follow.length) return ruffOrDiscard(seat, !(partnerWins && sure(seat, cur.card)));
+    if (partnerWins && sure(seat, cur.card)) return lowest(follow);
+    const sureW = byRankAsc(beating.filter((c) => sure(seat, c)));
+    if (sureW.length) return sureW[0];
+    if (beating.length) {                           // third hand high, lowest of touching cards
+      const high = follow.slice().sort((a, b) => b.rank - a.rank)[0];
+      return lowestEquivalent(seat, high);
+    }
+    return lowest(follow);
+  }
+  // fourth
+  if (!follow.length) return ruffOrDiscard(seat, !partnerWins);
+  if (!partnerWins && beating.length) return byRankAsc(beating)[0];
+  return lowest(follow);
+}
+
+// ---------------- automatic swap: a finesse always fails ----------------
+// declarer's side plays third a card that wins the trick so far but is not its highest in the suit
+function maybeSwap(card) {
+  if (G.plays.length !== 2 || side(G.turn) !== 'NS') return;
+  const led = G.plays[0].card.suit;
+  if (card.suit !== led) return;
+  const cur = winning().card;
+  if (!beatsOn(card, cur)) return;                  // a card that does not win: not a finesse
+  if (!G.hands[G.turn].some((c) => c.suit === led && c.rank > card.rank)) return;
+  const second = G.plays[1].seat, fourth = left(G.turn);
+  const higher = (s) => G.hands[s].filter((c) => c.suit === led && c.rank > card.rank);
+  if (higher(fourth).length) return;                // already fails
+  const h = byRankAsc(higher(second))[0];
+  if (!h) return;
+  const lockd = new Set(B.locked || []);
+  const small = byRankAsc(G.hands[fourth].filter((c) => c.suit === led && c.rank < card.rank));
+  const x = small.find((c) => !lockd.has(nm(c.rank) + c.suit));
+  if (!x || lockd.has(nm(h.rank) + h.suit)) return;
+  G.hands[second] = G.hands[second].filter((c) => !same(c, h)).concat([x]);
+  G.hands[fourth] = G.hands[fourth].filter((c) => !same(c, x)).concat([h]);
+  G.swaps.push({ card: h, from: second, to: fourth });
+}
+
+// ---------------- short reminders for beginners ----------------
+const TIPS_NT = [
+  'לפני הקלף הראשון, ספור את הלקיחות הבטוחות שלך.',
+  'חובה לשרת. קלף שאסור לשחק מופיע חיוור.',
+  'בסדרה שיש בה קלפים גבוהים בשתי הידיים, שחק קודם את הגבוה מהיד הקצרה.',
+  'שים לב מאיזו יד אתה משחק. מי שזכה בלקיחה מוביל את הבאה.',
+];
+const sy = (x) => `<bdi>${SYM[x]}</bdi>`;
+const LESSON_END = {
+  R: 'מה למדנו. חיתוך ביד הקצרה מוסיף לקיחות, וחיתוך ביד הארוכה לא מוסיף כלום.',
+  M: 'מה למדנו. אפשר להוציא שליטים ועדיין להשאיר שליט אחד בדומם, בשביל חיתוך.',
+  D: 'מה למדנו. כשאין מה לחתוך, מוציאים שליטים בהתחלה ואחר כך מפתחים סדרה.',
+};
+const MI_OPEN = {
+  '1NT': 'המשיב ענה <bdi>1NT</bdi> עם 6 עד 9 נקודות. החוזה נמוך, ולכן כל לקיחה חשובה.',
+  '2NT': 'המשיב הזמין עם <bdi>2NT</bdi>, והפותח לא קיבל את ההזמנה.',
+  '2NT3': 'המשיב הזמין עם <bdi>2NT</bdi>, והפותח קיבל וסגר <bdi>3NT</bdi>.',
+  '3NT': 'למשיב יש חזקה לגמר, והוא סגר <bdi>3NT</bdi> בבת אחת.',
+  'R1NT': 'המשיב ענה במיגור, ואין התאמה. הפותח חזר ל-<bdi>1NT</bdi> והחוזה נעצר שם.',
+  'R1NT3': 'המשיב ענה במיגור, ואין התאמה. הפותח חזר ל-<bdi>1NT</bdi> והמשיב סגר <bdi>3NT</bdi>.',
+  '3m3NT': 'המשיב תמך במינור, והפותח העדיף <bdi>3NT</bdi> על פני מינור.',
+  '2m': 'המשיב תמך במינור של הפותח עם 6 עד 9 נקודות, והחוזה נעצר בגובה שתיים.',
+  '3m': 'המשיב הזמין עם <bdi>3</bdi> במינור, והפותח סירב כי אין מספיק נקודות לגמר.',
+  'R2m': 'המשיב ענה במיגור, ואין התאמה. הפותח חזר למינור הארוך שלו והחוזה נעצר שם.',
+  '5m': 'יש 28 עד 30 נקודות ו-<bdi>3NT</bdi> לא עובד, ולכן הולכים ל-<bdi>5</bdi> במינור.',
+};
+const MI_END = {
+  N: 'מה למדנו. אחרי פתיחה במינור משחקים הרבה פעמים ב-NT, והמינור הארוך הוא מקור הלקיחות.',
+  J: 'מה למדנו. כשהמשיב מכריז מיגור של ארבעה קלפים והפותח תומך, המיגור הוא השליט.',
+  M: 'מה למדנו. מינור הוא שליט כמו כל סדרה, אבל כשיש חזקה לגמר עדיף לשחק ב-NT.',
+  F: 'מה למדנו. חמישה במינור רק עם 28 עד 30 נקודות, ורק כש-<bdi>3NT</bdi> לא עובד.',
+};
+const lessonEnd = (b) => (b.group === 'MI' ? MI_END[b.kind] : b.group === 'TR' ? LESSON_END[b.kind] : '');
+function tipsFor(b) {
+  if (b.group === 'MI') {
+    const first = b.kind === 'J' ? 'המשיב הכריז מיגור של ארבעה קלפים, והפותח תמך. יש התאמה במיגור, ולכן המיגור הוא השליט.' : MI_OPEN[b.key];
+    const mid = b.kind === 'N'
+      ? ['ב-NT ספור לקיחות בטוחות לפני הקלף הראשון.', 'המינור הארוך הוא מקור הלקיחות. פתח אותו מוקדם, כל עוד יש כניסות.']
+      : ['הוצא את שליטי היריבים בהתחלה, אלא אם יש לך מה לחתוך ביד הקצרה.', 'ביד הקצרה בשליט אפשר לחתוך ולהוסיף לקיחות. ביד הארוכה לא.'];
+    return [first, ...mid, 'חובה לשרת. קלף שאסור לשחק מופיע חיוור.'];
+  }
+  return b.trump || b.group === 'TR' ? tipsTR(b) : TIPS_NT;
+}
+function tipsTR(b) {
+  if (b.kind === 'R') return [
+    `בדומם יש מעט קלפים ב${sy(b.ruffSuit)}. זה המקום לחתוך.`,
+    'אל תמהר להוציא שליטים. בלי שליט בדומם אין במה לחתוך.',
+    'חותכים ביד הקצרה, כי רק שם החיתוך מוסיף לקיחה.',
+    'חובה לשרת. קלף שאסור לשחק מופיע חיוור.',
+  ];
+  if (b.kind === 'M') return [
+    'יש לך שישה שליטים מול שלושה. אפשר להוציא שליטים ועדיין להישאר עם שליט בדומם.',
+    `הוצא שני סבבי שליט ושמור את השליט האחרון בדומם. ב${sy(b.ruffSuit)} יש בדומם מעט קלפים, ושם תחתוך.`,
+    'חותכים ביד הקצרה, לא ביד הארוכה.',
+    'חובה לשרת. קלף שאסור לשחק מופיע חיוור.',
+  ];
+  return TIPS_TR;
+}
+const TIPS_TR = [
+  'לפני הקלף הראשון, ספור את הלקיחות הבטוחות שלך.',
+  'קודם כול, הוצא את השליטים של היריבים.',
+  'כשאין לך קלף בסדרה שהובלה, אפשר לחתוך בשליט.',
+  'חובה לשרת. קלף שאסור לשחק מופיע חיוור.',
+];
+
+// ---------------- flow ----------------
+const $ = (id) => document.getElementById(id);
+// the table is drawn the same way as on every other exercise page (finesse.html and the rest):
+// one line of cards per hand in the suit order below, face-down backs for a hand the student
+// cannot see, and the trick in the square in the middle
+const HAND_ORDER = ['S', 'H', 'C', 'D'];
+const RANKCH = { 14: 'A', 13: 'K', 12: 'Q', 11: 'J', 10: 'T' };
+const rankBtn = (s, c, can, revealed) => `<button class="rank-btn${c.suit === 'H' || c.suit === 'D' ? ' red' : ''}${revealed ? ' revealed' : ''}"` +
+  ` data-s="${s}" data-c="${c.rank}${c.suit}"${can ? '' : ' disabled'}><span class="card-rank">${RANKCH[c.rank] || c.rank}</span><span class="card-suit">${SYM[c.suit]}</span></button>`;
+function render() {
+  const over = G.open;
+  for (const s of SEATS) {
+    const show = over || showDef || side(s) === 'NS';
+    const mine = !G.over && !G.replay && side(s) === 'NS' && G.turn === s && !busy;
+    const leg = mine ? legal(s) : [];
+    $('title' + s).textContent = s === G.declarer ? `כרוז (${HEB[s]})` : s === G.dummy ? `דומם (${HEB[s]})` : HEB[s];
+    const hand = HAND_ORDER.flatMap((su) => G.hands[s].filter((c) => c.suit === su).sort((a, b) => b.rank - a.rank));
+    $('hand' + s).innerHTML = show
+      ? hand.map((c) => rankBtn(s, c, leg.some((x) => same(x, c)), side(s) === 'EW' || over)).join('')
+      : hand.map(() => '<div class="rank-back"></div>').join('') + `<span class="hand-count"><bdi>${hand.length}</bdi> קלפים</span>`;
+    $('hand' + s).onclick = (e) => {
+      const b = e.target && e.target.closest ? e.target.closest('button[data-c]') : null;
+      if (!b || b.disabled) return;
+      studentPlay({ rank: +b.dataset.c.slice(0, -1), suit: b.dataset.c.slice(-1) });
+    };
+    $('seat' + s).classList.toggle('turn', !G.over && G.turn === s);
+  }
+  $('tableEl').classList.toggle('table--revealed', !!over);
+  $('undo').disabled = !history.length || G.replay || busy;
+  const played = new Set(G.plays.map((p) => p.seat));
+  $('trickArea').innerHTML = G.plays.map((p) => `<div class="trick-t${p.seat.toLowerCase()}"><div class="card-btn${p.card.suit === 'H' || p.card.suit === 'D' ? ' red' : ''}">${SYM[p.card.suit]}${RANKCH[p.card.rank] || p.card.rank}</div></div>`).join('') +
+    SEATS.filter((s) => !played.has(s)).map((s) => `<div class="trick-t${s.toLowerCase()}"><div class="compass-letter">${s}</div></div>`).join('');
+  const ds = side(G.declarer);
+  $('msg').innerHTML = G.over ? '' : side(G.turn) === 'NS'
+    ? (G.turn === G.dummy ? 'תורך. שחק קלף מהדומם (צפון).' : 'תורך. שחק קלף מהיד שלך (דרום).')
+    : 'ההגנה משחקת.';
+  $('info').innerHTML = `לקיחות שלך: <bdi class="num">${G.won[ds]}</bdi> מתוך <bdi class="num">${G.needed}</bdi><br>` +
+    `לקיחות ההגנה: <bdi class="num">${G.won[ds === 'NS' ? 'EW' : 'NS']}</bdi>`;
+}
+function renderStatic() {
+  const lvl = '';
+  $('title').innerHTML = `חוזה ${bidHtml(B.contract)} · כרוז ${HEB[B.declarer]}${lvl}`;
+  const cols = ['W', 'N', 'E', 'S'];
+  let html = cols.map((s) => `<div class="h">${HEB[s]}</div>`).join('');
+  const bids = B.auction || [];
+  const start = cols.indexOf(B.dealer || 'N');
+  html += '<div></div>'.repeat(start) + bids.map((b) => `<div>${bidHtml(b)}</div>`).join('');
+  $('auction').innerHTML = bids.length ? html : '<span style="direction:rtl">אין מהלך הכרזה</span>';
+  $('endBox').classList.add('hidden');
+  $('tricksBox').classList.add('hidden');
+  $('tips').innerHTML = tipsFor(B).map((t) => `<div>${t}</div>`).join('');
+}
+const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+async function afterCard(done) {
+  const game = G, ep = epoch; // a restart, another board or an undo while we wait: this chain must stop
+  render();
+  if (done) {
+    busy = true; await wait(1000);
+    if (game !== G || ep !== epoch) return;
+    G.plays = []; busy = false;
+    if (!G.hands.N.length) return finish();
+    render();
+  }
+  if (!G.over && side(G.turn) === 'EW') {
+    busy = true; await wait(650);
+    if (game !== G || ep !== epoch) return;
+    busy = false;
+    const c = defend();
+    if (window.__onDefend) window.__onDefend(c);
+    afterCard(doPlay(c));
+  }
+}
+// one step back: the state is kept before every card the student plays
+function snapshot() {
+  return JSON.stringify({ hands: G.hands, plays: G.plays, won: G.won, turn: G.turn, leader: G.leader,
+    played: G.played, tricks: G.tricks, voids: G.voids, discarded: G.discarded, lastLedBy: G.lastLedBy, swaps: G.swaps, last: G.last });
+}
+function undo() {
+  if (!history.length || G.replay) return;
+  epoch++;
+  busy = false;
+  Object.assign(G, JSON.parse(history.pop()), { over: false, open: false });
+  $('endBox').classList.add('hidden'); $('tricksBox').classList.add('hidden');
+  render();
+  if (side(G.turn) === 'EW') afterCard(false);
+}
+function studentPlay(card) {
+  if (busy || G.over || side(G.turn) !== 'NS') return;
+  history.push(snapshot());
+  afterCard(doPlay(card));
+}
+// the first card by declarer's side after which the contract could no longer be made
+function findMistake() {
+  const h = Object.fromEntries(SEATS.map((s) => [s, parseHand(B.hands[s])]));
+  let won = 0;
+  for (let ti = 0; ti < G.tricks.length; ti++) {
+    const t = G.tricks[ti], leader = t.plays[0].seat, inTrick = [];
+    const order = []; for (let k = 0; k < 4; k++) order.push(SEATS[(SEATS.indexOf(leader) + k) % 4]);
+    for (const p of t.plays) {
+      if (side(p.seat) === 'NS') {
+        const ch = solve(leader + ':' + order.map((s) => pbnHand(h[s])).join(' '), G.trump || 'N', inTrick.map((x) => x.card));
+        const best = Math.max(...ch.map((c) => c.score));
+        const mine = ch.find((c) => same(c.card, p.card));
+        if (mine && mine.score < best && won + best >= G.needed) {
+          const all = SEATS.flatMap((s) => h[s]);
+          return { trick: ti + 1, seat: p.seat, card: p.card, lead: !inTrick.length, right: ch.filter((c) => c.score === best).map((c) => c.card), won,
+            top: !all.some((c) => c.suit === p.card.suit && c.rank > p.card.rank), led: inTrick.length ? inTrick[0].card.suit : null, sure: sureTricks() };
+        }
+      }
+      inTrick.push(p);
+    }
+    for (const p of t.plays) h[p.seat] = h[p.seat].filter((c) => !same(c, p.card));
+    if (side(t.winner) === 'NS') won++;
+  }
+  return null;
+}
+// winners declarer's side can cash from the top of each suit, before any suit is developed
+function sureTricks() {
+  const H = Object.fromEntries(SEATS.map((s) => [s, parseHand(B.hands[s])]));
+  return SUITS.reduce((t, s) => {
+    const ns = [...H.N, ...H.S].filter((c) => c.suit === s).map((c) => c.rank);
+    let n = 0; for (let r = 14; ns.includes(r); r--) n++;
+    return t + Math.min(n, Math.max(H.N.filter((c) => c.suit === s).length, H.S.filter((c) => c.suit === s).length));
+  }, 0);
+}
+function whyWrong(m, sameSuit) {
+  const T1 = '<b>ספירת לקיחות</b><br>ספור לקיחות בטוחות לפני שתתחיל לשחק ובדוק מהיכן יגיעו לקיחות נוספות.';
+  const T2 = '<b>פיתוח סדרות</b><br>בתחילת המשחק אל תקח את הלקיחות הבטוחות. נסה לפתח סדרות ארוכות.';
+  const T3 = '<b>שמירת כניסות</b><br>בדוק היכן יש לך פחות כניסות ושמור שם על הכניסות.';
+  if (sameSuit.length && m.card.rank > Math.max(...sameSuit.map((c) => c.rank))) return T3;
+  if (!sameSuit.length && m.lead && m.top && m.trick <= 3) return T2;
+  return T1;
+}
+const OPENERS = ['כל הכבוד', 'נכון', 'מעולה']; let openerIx = 0; // rotates, as the feedback skill asks
+function critique(diff) {
+  const tr = B.group === 'TR' || (B.group === 'MI' && B.kind !== 'N');
+  if (diff >= 0) { return OPENERS[openerIx++ % OPENERS.length] + '<br>החוזה בוצע' + (lessonEnd(B) ? '<br>' + lessonEnd(B) : ''); }
+  if (tr) {
+    const TT = [
+      '<b>חיתוך ביד הקצרה</b><br>לקיחות ביד הקצרה בשליט מוסיפות לקיחות. חפש סדרה שבה לדומם יש מעט קלפים, ושמור שליט לחתוך.',
+      '<b>שליטים בהתחלה</b><br>כשאין מה לחתוך, הוצא את שליטי היריבים בהתחלה. כשיש מה לחתוך, השאר שליט בדומם.',
+      '<b>לא חותכים ביד הארוכה</b><br>חיתוך ביד הארוכה לא מוסיף לקיחה, כי השליט הזה היה לוקח לקיחה בכל מקרה.'];
+    const main = B.group === 'TR' && B.kind === 'R' ? TT[0] : TT[1], n = diff >= -2 ? 1 : diff >= -4 ? 2 : 3;
+    const msgs = [main, ...TT.filter((t) => t !== main)].slice(0, n);
+    return 'החוזה לא בוצע<br>' + (n === 1 ? msgs[0] : msgs.map((t, i) => `${i + 1}. ${t}`).join('<br>')) + '<br>' + lessonEnd(B);
+  }
+  const ALL = [
+    '<b>ספירת לקיחות</b><br>ספור לקיחות בטוחות לפני שתתחיל לשחק ובדוק מהיכן יגיעו לקיחות נוספות.',
+    '<b>פיתוח סדרות</b><br>בתחילת המשחק אל תקח את הלקיחות הבטוחות. נסה לפתח סדרות ארוכות.',
+    '<b>שמירת כניסות</b><br>בדוק היכן יש לך פחות כניסות ושמור שם על הכניסות.'];
+  const m = findMistake();
+  const main = m ? whyWrong(m, m.right.filter((c) => c.suit === m.card.suit)) : ALL[0];
+  const n = diff >= -2 ? 1 : diff >= -4 ? 2 : 3; // the further from the contract, the more messages
+  const msgs = [main, ...ALL.filter((t) => t !== main)].slice(0, n);
+  return 'החוזה לא בוצע<br>' + (n === 1 ? msgs[0] : msgs.map((t, i) => `${i + 1}. ${t}`).join('<br>')) + (lessonEnd(B) ? '<br>' + lessonEnd(B) : '');
+}
+function finish() {
+  G.over = true; G.open = true;
+  const ds = side(G.declarer), got = G.won[ds];
+  const diff = got - G.needed;
+  let res = `לקחת <bdi class="num">${got}</bdi> לקיחות. `;
+  res += diff >= 0 ? (diff ? (diff === 1 ? 'ביצעת עם לקיחה עודפת אחת.' : `ביצעת עם <bdi class="num">${diff}</bdi> לקיחות עודפות.`) : 'ביצעת בדיוק.') : (diff === -1 ? 'נפלת בלקיחה אחת.' : `נפלת ב-<bdi class="num">${-diff}</bdi> לקיחות.`);
+  $('result').innerHTML = res;
+  let crit = critique(diff);
+  if (diff >= 0) {
+    saveMade(B);
+    renderLevels(); if (window.__fillPick) window.__fillPick();
+  }
+  $('crit').innerHTML = crit;
+  $('endBox').classList.remove('hidden');
+  renderTricks();
+  render();
+  if ($('endBox').scrollIntoView) $('endBox').scrollIntoView({ behavior: 'smooth', block: 'start' });
+}
+// every trick of the game: who led, the four cards, who won
+function renderTricks() {
+  let h = '<table class="play"><tr><th>#</th><th>מוביל</th><th>1</th><th>2</th><th>3</th><th>4</th><th>לוקח</th></tr>';
+  G.tricks.forEach((t, i) => {
+    h += `<tr class="${side(t.winner) === 'NS' ? 'ns' : 'ew'}"><td><bdi class="num">${i + 1}</bdi></td><td>${HEB[t.plays[0].seat]}</td>` +
+      t.plays.map((p) => `<td>${cardHtml(p.card)}</td>`).join('') + `<td>${HEB[t.winner]}</td></tr>`;
+  });
+  $('tricks').innerHTML = h + '</table>';
+  $('tricksBox').classList.remove('hidden');
+}
+let startGen = 0;
+async function start() {
+  const gen = ++startGen;
+  epoch++;
+  if (replayTimer) { clearInterval(replayTimer); replayTimer = null; }
+  newGame(B);
+  history = [];
+  if ($('levels')) renderLevels();
+  renderStatic();
+  render();
+  busy = true; await wait(500); busy = false;
+  if (gen !== startGen) return; // a newer start took over
+  afterCard(doPlay(parseCard(B.lead.length === 2 ? B.lead : B.lead)));
+}
+// ---------------- replay of the correct line ----------------
+let rp = null;
+function replayStart() {
+  newGame(B); G.open = true; G.replay = true;
+  rp = { i: 0, line: (B.line || []).map((s) => ({ rank: rk(s[0]), suit: s[1] })) };
+  renderStatic(); $('endBox').classList.remove('hidden'); $('step').classList.remove('hidden');
+  $('result').innerHTML = 'הקו הנכון, קלף אחרי קלף.';
+  render();
+}
+async function replayStep() {
+  if (!rp || busy) return;
+  if (!G.plays.length && G.plays.length === 0 && rp.pendingClear) rp.pendingClear = false;
+  if (rp.i >= rp.line.length) { $('result').innerHTML = `סוף הקו הנכון: <bdi class="num">${G.won[side(G.declarer)]}</bdi> לקיחות.`; return; }
+  const done = doPlay(rp.line[rp.i++]);
+  render();
+  if (done) { busy = true; await wait(700); G.plays = []; busy = false; render(); }
+}
+
+// ---------------- boot ----------------
+// ---------------- levels: a student moves up after PASS made boards in a level ----------------
+const LEVELS = [
+  { name: '<bdi>NT</bdi>', test: (b) => b.contract.endsWith('NT') && b.auction.every((c) => /^(P|1NT|2NT|3NT)$/.test(c)) }, // no Stayman, no transfers
+  { name: 'מיגור', test: (b) => b.group === 'TR' },
+  { name: 'מינור', test: (b) => b.group === 'MI' },
+];
+window.BOARDS = (window.BOARDS || []).filter((b) => b.group === 'TR' || b.group === 'MI' || (b.contract.endsWith('NT') && b.auction.every((c) => /^(P|1NT|2NT|3NT)$/.test(c)))); // lesson 1 NT, lesson 2 trump
+const PASS = 3, STORE = 'bp-progress-v1', ALL_OPEN = true; // ?all=1 opens every level (for the teacher)
+let progress = { made: {} };
+try { const p = JSON.parse(localStorage.getItem(STORE) || 'null'); if (p && p.made) progress = p; } catch (e) { /* storage blocked: the student starts from level 1 each visit */ }
+const bkey = (b) => b.hands.S + '|' + b.hands.N;
+const isMade = (b) => !!progress.made[bkey(b)];
+const levelOf = (b) => LEVELS.findIndex((l) => l.test(b));
+const inLevel = (i) => (window.BOARDS || []).filter((b) => LEVELS[i].test(b));
+const madeIn = (i) => inLevel(i).filter(isMade).length;
+const passedLevel = (i) => madeIn(i) >= Math.min(PASS, inLevel(i).length);
+const unlockedLevel = (i) => ALL_OPEN || i === 0 || passedLevel(i - 1);
+function saveMade(b) { progress.made[bkey(b)] = 1; try { localStorage.setItem(STORE, JSON.stringify(progress)); } catch (e) { /* ignore */ } }
+const firstUnmade = (i) => inLevel(i).find((b) => !isMade(b)) || inLevel(i)[0];
+function nextBoard() {
+  const all = inLevel(levelOf(B)), k = all.indexOf(B);
+  for (let j = 1; j <= all.length; j++) { const c = all[(k + j) % all.length]; if (!isMade(c)) return c; } // the next board in order that is not made yet
+  return all[(k + 1) % all.length];
+}
+function renderLevels() {
+  const cur = B ? levelOf(B) : 0;
+  $('levels').innerHTML = LEVELS.map((l, i) => {
+    const open = unlockedLevel(i), n = inLevel(i).length;
+    const state = !open ? 'locked' : passedLevel(i) ? 'done' : '';
+    return `<button class="lvl ${state} ${i === cur ? 'cur' : ''}" data-i="${i}" ${open ? '' : 'disabled'}>רמה <bdi class="num">${i + 1}</bdi> ${l.name}<small>${open ? `<bdi class="num">${Math.min(madeIn(i), PASS)}</bdi> מתוך <bdi class="num">${Math.min(PASS, n)}</bdi>` : 'נעולה'}</small></button>`;
+  }).join('');
+  $('levels').querySelectorAll('button').forEach((btn) => { btn.onclick = () => goTo(firstUnmade(+btn.dataset.i)); });
+}
+function goTo(b) { B = b; $('pick').value = String(window.BOARDS.indexOf(b)); start(); }
+
+function boot() {
+  initSolver();
+  const pick = $('pick');
+  const boards = window.BOARDS || [];
+  const fillPick = () => {
+    pick.innerHTML = LEVELS.map((l, i) => i !== lesson ? '' : `<optgroup label="${l.name.replace(/<[^>]+>/g, '')}">` + boards.map((b, k) => LEVELS[i].test(b) ? `<option value="${k}" ${unlockedLevel(i) ? '' : 'disabled'}>${b.id} · ${b.contract}${isMade(b) ? ' ✓' : ''}</option>` : '').join('') + '</optgroup>').join('');
+    if (B) pick.value = String(boards.indexOf(B));
+  };
+  window.__fillPick = fillPick;
+  pick.onchange = () => { B = boards[+pick.value]; start(); };
+  $('restart').onclick = () => start();
+  $('undo').onclick = undo;
+  $('showDef').onclick = () => { showDef = !showDef; $('showDef').textContent = showDef ? 'הסתר ידי הגנה' : 'הצג ידי הגנה'; if (G) render(); };
+  const next = () => goTo(nextBoard());
+  $('next').onclick = next; $('nextTop').onclick = next;
+  $('again').onclick = () => start();
+  if (boards.length) {
+    B = firstUnmade(lesson); fillPick(); renderLevels(); start();
+    $('lessonBtn').onclick = () => {
+      lesson = (lesson + 1) % LEVELS.length; B = firstUnmade(lesson);
+      $('lessonBtn').innerHTML = 'שיעור ' + LEVELS[lesson].name;
+      fillPick(); renderLevels(); start();
+    };
+  }
+}
+if (Module.calledRun) boot(); else Module.onRuntimeInitialized = boot;
+// test hook, read only by tools
+window.__T = { get G() { return G; }, setBoard(b) { B = b; }, start, studentPlay, solverChoices, side, replayStart, replayStep, suitSolve, get busy() { return busy; } };
+})();
+</script>
+</body>
+</html>
